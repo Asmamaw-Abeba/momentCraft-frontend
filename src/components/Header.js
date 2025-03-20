@@ -45,6 +45,9 @@ const Header = () => {
             <Button color="inherit" component={Link} to="/memories">
               Memories
             </Button>
+            <Button color="inherit" component={Link} to="/timelines">
+              Your Timeline
+            </Button>
             {token ? (
               <Button color="inherit" onClick={handleLogout}>
                 Logout
@@ -94,6 +97,9 @@ const Header = () => {
               </MenuItem>
               <MenuItem onClick={handleClose} component={Link} to="/memories">
                 Memories
+              </MenuItem>
+              <MenuItem onClick={handleClose} component={Link} to="/timelines">
+                Your Timeline
               </MenuItem>
               {token ? (
                 <MenuItem onClick={handleLogout}>Logout</MenuItem>
