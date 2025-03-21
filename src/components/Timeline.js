@@ -1,91 +1,130 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
   Box,
-  Typography,
-  Grid,
-  Card,
-  CardContent,
-  CardMedia,
   Button,
   TextField,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Pagination,
-  Fade,
+  Grid,
+  Card,
+  CardContent,
+  CardMedia,
+  Typography,
   IconButton,
-  InputAdornment,
+  Fade,
+  Tooltip,
+  MenuItem,
+  Select,
+  Pagination,
+  AppBar,
+  Toolbar,
+  Skeleton,
 } from '@mui/material';
+import { Add as AddIcon, Delete as DeleteIcon, Share as ShareIcon } from '@mui/icons-material';
+import { Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { styled } from '@mui/system';
+import Carousel from 'react-material-ui-carousel';
 import AuthContext from '../context/AuthContext';
-import SearchIcon from '@mui/icons-material/Search';
-import DeleteIcon from '@mui/icons-material/Delete';
 
 // Styled Card with hover effect
 const StyledCard = styled(Card)(({ theme }) => ({
-  transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+  transition: 'transform 0.3s, box-shadow 0.3s',
   '&:hover': {
     transform: 'scale(1.03)',
-    boxShadow: theme.shadows[8],
+    boxShadow: theme.shadows[6],
   },
   borderRadius: 12,
   overflow: 'hidden',
 }));
 
+// Styled AppBar for sticky header
+const StyledAppBar = styled(AppBar)(({ theme }) => ({
+  background: 'linear-gradient(45deg, #1976d2, #42a5f5)',
+  boxShadow: theme?.shadows?.[4] || '0px 4px 10px rgba(0, 0, 0, 0.1)',
+  padding: '0 16px',
+}));
+
 const Timeline = () => {
   const [timelines, setTimelines] = useState([]);
   const [filteredTimelines, setFilteredTimelines] = useState([]);
-  const [openCreateDialog, setOpenCreateDialog] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [newTimelineName, setNewTimelineName] = useState('');
   const [newTimelineDescription, setNewTimelineDescription] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [openCreateDialog, setOpenCreateDialog] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [timelineToDelete, setTimelineToDelete] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [sortBy, setSortBy] = useState('name');
   const [page, setPage] = useState(1);
-  const timelinesPerPage = 6; // Adjustable
-  const { token } = useContext(AuthContext);
+  const [maxThumbnails, setMaxThumbnails] = useState(3); // Dynamic thumbnail limit
+  const timelinesPerPage = 6;
   const navigate = useNavigate();
+  const { token } = useContext(AuthContext);
 
-  // Fetch all timelines for the user
   useEffect(() => {
-    const fetchTimelines = async () => {
-      try {
-        const { data } = await axios.get('http://localhost:5000/api/timelines', {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        setTimelines(data || []);
-        setFilteredTimelines(data || []);
-      } catch (error) {
-        console.error('Error fetching timelines:', error);
-      }
-    };
     fetchTimelines();
-  }, [token]);
+  }, []);
 
-  // Filter timelines based on search query
+  const fetchTimelines = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/timelines', {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setTimelines(response.data);
+      setFilteredTimelines(response.data);
+    } catch (error) {
+      console.error('Error fetching timelines:', error);
+      setError('Failed to load timelines. Please try again.');
+      toast.error('Failed to load timelines');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle search and sort
+  const handleSearchAndSort = () => {
+    let result = [...timelines];
+    if (searchQuery) {
+      result = result.filter((timeline) =>
+        timeline.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    if (sortBy === 'name') {
+      result.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortBy === 'memories') {
+      result.sort((a, b) => b.memories.length - a.memories.length);
+    } else if (sortBy === 'date') {
+      result.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+    }
+    setFilteredTimelines(result);
+    setPage(1);
+  };
+
   useEffect(() => {
-    const filtered = timelines.filter((timeline) =>
-      timeline.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      timeline.description?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    setFilteredTimelines(filtered);
-    setPage(1); // Reset to first page on search
-  }, [searchQuery, timelines]);
+    handleSearchAndSort();
+  }, [searchQuery, sortBy, timelines]);
 
-  // Handle creating a new timeline
   const handleCreateTimeline = async () => {
     if (!newTimelineName.trim()) {
-      alert('Timeline name is required');
+      toast.error('Timeline name is required');
       return;
     }
     try {
       const response = await axios.post(
         'http://localhost:5000/api/timelines',
-        { name: newTimelineName, description: newTimelineDescription },
+        {
+          name: newTimelineName,
+          description: newTimelineDescription,
+        },
         {
           headers: {
             'Content-Type': 'application/json',
@@ -97,202 +136,357 @@ const Timeline = () => {
       setNewTimelineName('');
       setNewTimelineDescription('');
       setOpenCreateDialog(false);
+      toast.success('Timeline created successfully!');
     } catch (error) {
       console.error('Error creating timeline:', error);
-      alert('Failed to create timeline');
+      toast.error('Failed to create timeline');
     }
   };
 
-  // Handle deleting a timeline
-  const handleDeleteTimeline = async (timelineId) => {
-    if (window.confirm('Are you sure you want to delete this timeline?')) {
-      try {
-        await axios.delete(`http://localhost:5000/api/timelines/${timelineId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setTimelines((prev) => prev.filter((t) => t._id !== timelineId));
-      } catch (error) {
-        console.error('Error deleting timeline:', error);
-        // alert('Failed to delete timeline');
-      }
+  const handleDeleteTimeline = async () => {
+    if (!timelineToDelete) return;
+    try {
+      await axios.delete(`http://localhost:5000/api/timelines/${timelineToDelete._id}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setTimelines((prev) => prev.filter((t) => t._id !== timelineToDelete._id));
+      setOpenDeleteDialog(false);
+      setTimelineToDelete(null);
+      toast.success('Timeline deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting timeline:', error);
+      toast.error('Failed to delete timeline');
     }
+  };
+
+  const handleOpenDeleteDialog = (timeline) => {
+    setTimelineToDelete(timeline);
+    setOpenDeleteDialog(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setOpenDeleteDialog(false);
+    setTimelineToDelete(null);
+  };
+
+  const handleRetry = () => {
+    setError(null);
+    setLoading(true);
+    fetchTimelines();
+  };
+
+  const handleShareAll = () => {
+    const shareUrl = `${window.location.origin}/api/timelines`;
+    navigator.clipboard.writeText(shareUrl);
+    toast.success('Timelines page link copied to clipboard!');
   };
 
   // Pagination logic
-  const totalPages = Math.ceil(filteredTimelines.length / timelinesPerPage);
   const paginatedTimelines = filteredTimelines.slice(
     (page - 1) * timelinesPerPage,
     page * timelinesPerPage
   );
+  const totalPages = Math.ceil(filteredTimelines.length / timelinesPerPage);
 
-  // Check if media is a video
-  const isVideo = (media) => {
-    if (!media) return false;
-    const videoExtensions = ['.mp4', '.webm', '.ogg'];
-    return videoExtensions.some((ext) => media.toLowerCase().endsWith(ext));
-  };
+  if (loading) {
+    return (
+      <Box sx={{ padding: { xs: 2, sm: 3, md: 4 }, minHeight: '100vh', bgcolor: '#f5f5f5' }}>
+        <Grid container spacing={3}>
+          {[...Array(6)].map((_, index) => (
+            <Grid item xs={12} sm={6} md={4} key={index}>
+              <Skeleton variant="rectangular" height={180} sx={{ borderRadius: 12 }} />
+              <Skeleton variant="text" width="80%" sx={{ mt: 1 }} />
+              <Skeleton variant="text" width="60%" />
+              <Skeleton variant="text" width="40%" />
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
+    );
+  }
 
-  return (
-    <Box sx={{ padding: { xs: 2, sm: 3 }, bgcolor: '#f5f5f5', minHeight: '100vh' }}>
-      {/* Header */}
-      <Fade in>
-        <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <Typography
-            variant="h4"
-            sx={{
-              fontWeight: 'bold',
-              background: 'linear-gradient(45deg, #0288d1, #26c6da)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}
-          >
-            Your Timelines
-          </Typography>
-          <Typography variant="body1" color="textSecondary" sx={{ mt: 1 }}>
-            Organize and relive your memories
-          </Typography>
-        </Box>
-      </Fade>
-
-      {/* Search and Create */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3, flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
-        <TextField
-          label="Search Timelines"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          variant="outlined"
-          sx={{ maxWidth: { sm: 300 }, width: '100%' }}
-          InputProps={{
-            endAdornment: (
-              <InputAdornment position="end">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          }}
-        />
+  if (error) {
+    return (
+      <Box sx={{ textAlign: 'center', mt: 5 }}>
+        <Typography color="error" variant="h6">{error}</Typography>
         <Button
           variant="contained"
           color="primary"
-          onClick={() => setOpenCreateDialog(true)}
-          sx={{ px: 4, py: 1.5, borderRadius: 20 }}
+          onClick={handleRetry}
+          sx={{ mt: 2 }}
+          aria-label="Retry loading timelines"
         >
-          Create New Timeline
+          Retry
         </Button>
       </Box>
+    );
+  }
 
-      {/* Timelines Grid */}
-      {filteredTimelines.length === 0 ? (
-        <Box sx={{ textAlign: 'center', mt: 5 }}>
-          <Typography variant="h6" color="textSecondary">
-            {searchQuery ? 'No matching timelines found.' : 'No timelines yet.'}
+  return (
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5' }}>
+      {/* Sticky Header */}
+      <StyledAppBar position="sticky">
+        <Toolbar sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6" sx={{ color: '#fff', fontWeight: 'bold' }}>
+            Timelines
           </Typography>
-          <Typography variant="body1" color="textSecondary" sx={{ mt: 1 }}>
-            Create a timeline to start adding memories!
-          </Typography>
-        </Box>
-      ) : (
-        <>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <TextField
+              label="Search Timelines"
+              variant="outlined"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              sx={{ width: { xs: '150px', sm: '200px' }, background: '#fff', borderRadius: 1 }}
+              size="small"
+              inputProps={{ 'aria-label': 'Search timelines by name' }}
+            />
+            <Select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              variant="outlined"
+              sx={{ minWidth: 120, background: '#fff', borderRadius: 1 }}
+              size="small"
+              aria-label="Sort timelines"
+            >
+              <MenuItem value="name">Name</MenuItem>
+              <MenuItem value="memories">Memories</MenuItem>
+              <MenuItem value="date">Date</MenuItem>
+            </Select>
+            <Select
+              value={maxThumbnails}
+              onChange={(e) => setMaxThumbnails(e.target.value)}
+              variant="outlined"
+              sx={{ minWidth: 80, background: '#fff', borderRadius: 1 }}
+              size="small"
+              aria-label="Set maximum thumbnails"
+            >
+              <MenuItem value={1}>1</MenuItem>
+              <MenuItem value={3}>3</MenuItem>
+              <MenuItem value={5}>5</MenuItem>
+            </Select>
+            <Tooltip title="Create New Timeline">
+              <IconButton
+                color="inherit"
+                onClick={() => setOpenCreateDialog(true)}
+                aria-label="Create new timeline"
+              >
+                <AddIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Share All Timelines">
+              <IconButton
+                color="inherit"
+                onClick={handleShareAll}
+                aria-label="Share all timelines link"
+              >
+                <ShareIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        </Toolbar>
+      </StyledAppBar>
+
+      {/* Main Content */}
+      <Box sx={{ padding: { xs: 2, sm: 3, md: 4 } }}>
+        <Fade in={filteredTimelines.length > 0}>
           <Grid container spacing={3}>
-            {paginatedTimelines.map((timeline) => (
+            {paginatedTimelines.map((timeline, index) => (
               <Grid item xs={12} sm={6} md={4} key={timeline._id}>
-                <StyledCard>
-                  {/* Preview first memory image/video if available */}
-                  {timeline.memories.length > 0 && timeline.memories[0].media && (
-                    <CardMedia
-                      component={timeline.memories[0].media.match(/\.(mp4|webm|ogg)$/) ? 'video' : 'img'}
-                      // src={`http://localhost:5000/${timeline.memories[0].media}`}
-                      src={timeline.memories[0].media}
-                      controls={timeline.memories[0].media.match(/\.(mp4|webm|ogg)$/) }
-                      sx={{ height: 150, objectFit: 'cover' }}
-                    />
-                  )}
-                  <CardContent>
-                    <Typography variant="h5" sx={{ fontWeight: 'medium' }}>
-                      {timeline.name}
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-                      {timeline.description || 'No description provided'}
-                    </Typography>
-                    <Typography variant="body2" sx={{ mt: 1 }}>
-                      Memories: {timeline.memories.length}
-                    </Typography>
-                    <Typography variant="caption" color="textSecondary">
-                      Created: {new Date(timeline.createdAt).toLocaleDateString()}
-                    </Typography>
-                    <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Box>
-                        <Button
-                          component={Link}
-                          to={`/timelines/${timeline._id}`}
-                          variant="outlined"
-                          color="primary"
-                          sx={{ mr: 1 }}
-                        >
-                          View Memories
-                        </Button>
-                        <Button
-                          onClick={() => navigate(`/add-memory/${timeline._id}`)}
-                          variant="contained"
-                          color="secondary"
-                        >
-                          Add Memory
-                        </Button>
-                      </Box>
-                      <IconButton
-                        onClick={() => handleDeleteTimeline(timeline._id)}
-                        color="error"
-                        sx={{ p: 1 }}
+                <Fade in timeout={300 + index * 100}>
+                  <StyledCard>
+                    {timeline.memories.length > 0 ? (
+                      <Carousel
+                        autoPlay={false}
+                        navButtonsAlwaysVisible
+                        indicators
+                        sx={{ height: { xs: 120, sm: 150, md: 180 } }}
+                        aria-label={`Preview of ${timeline.name || 'Untitled'} timeline`}
                       >
-                        <DeleteIcon />
-                      </IconButton>
-                    </Box>
-                  </CardContent>
-                </StyledCard>
+                        {timeline.memories.slice(0, maxThumbnails).map((memory) => (
+                          <CardMedia
+                            key={memory._id}
+                            component={memory.media.match(/\.(mp4|webm|ogg)$/) ? 'video' : 'img'}
+                            src={memory.media}
+                            controls={memory.media.match(/\.(mp4|webm|ogg)$/)}
+                            sx={{
+                              height: '100%',
+                              objectFit: 'cover',
+                            }}
+                            alt={memory.title || 'Timeline memory preview'}
+                            onError={(e) => (e.target.src = 'https://via.placeholder.com/150?text=No+Preview')}
+                          />
+                        ))}
+                      </Carousel>
+                    ) : (
+                      <Box
+                        sx={{
+                          height: { xs: 120, sm: 150, md: 180 },
+                          bgcolor: '#e0e0e0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Typography color="textSecondary">No Preview Available</Typography>
+                      </Box>
+                    )}
+                    <CardContent>
+                      <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                        {timeline.name || 'Untitled'}
+                      </Typography>
+                      <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                        {timeline.description || 'No description'}
+                      </Typography>
+                      <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
+                        Memories: {timeline.memories.length}
+                      </Typography>
+                      {timeline.updatedAt && (
+                        <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
+                          Last Updated: {new Date(timeline.updatedAt).toLocaleDateString()}
+                        </Typography>
+                      )}
+                      <Box
+                        sx={{
+                          mt: 2,
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          gap: 1,
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                          <Tooltip title="View Timeline Memories">
+                            <Button
+                              component={Link}
+                              to={`/timelines/${timeline._id}`}
+                              variant="outlined"
+                              color="primary"
+                              size="small"
+                              aria-label={`View memories of ${timeline.name || 'Untitled'} timeline`}
+                            >
+                              View Memories
+                            </Button>
+                          </Tooltip>
+                          <Tooltip title="Copy Shareable Link" leaveDelay={1000} disableHoverListener>
+                            <Button
+                              variant="outlined"
+                              color="info"
+                              size="small"
+                              onClick={() => {
+                                const shareUrl = `${window.location.origin}/timeline/public/${timeline._id}`;
+                                navigator.clipboard.writeText(shareUrl);
+                                toast.success('Shareable link copied to clipboard!');
+                              }}
+                              aria-label={`Copy shareable link for ${timeline.name || 'Untitled'} timeline`}
+                            >
+                              Share
+                            </Button>
+                          </Tooltip>
+                        </Box>
+                        <Tooltip title="Delete Timeline">
+                          <IconButton
+                            onClick={() => handleOpenDeleteDialog(timeline)}
+                            color="error"
+                            size="small"
+                            aria-label={`Delete ${timeline.name || 'Untitled'} timeline`}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </CardContent>
+                  </StyledCard>
+                </Fade>
               </Grid>
             ))}
           </Grid>
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-              <Pagination
-                count={totalPages}
-                page={page}
-                onChange={(e, value) => setPage(value)}
-                color="primary"
-                size="large"
-              />
-            </Box>
-          )}
-        </>
-      )}
+        </Fade>
+
+        {/* Pagination */}
+        {filteredTimelines.length > timelinesPerPage && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+            <Pagination
+              count={totalPages}
+              page={page}
+              onChange={(e, value) => setPage(value)}
+              color="primary"
+              aria-label="Timeline pagination"
+            />
+          </Box>
+        )}
+
+        {/* No Timelines Message */}
+        {filteredTimelines.length === 0 && (
+          <Typography variant="h6" sx={{ textAlign: 'center', mt: 5 }}>
+            No timelines found. Create one to get started!
+          </Typography>
+        )}
+      </Box>
 
       {/* Create Timeline Dialog */}
-      <Dialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Create a New Timeline</DialogTitle>
+      <Dialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Create New Timeline</DialogTitle>
         <DialogContent>
           <TextField
+            autoFocus
+            margin="dense"
             label="Timeline Name"
+            fullWidth
             value={newTimelineName}
             onChange={(e) => setNewTimelineName(e.target.value)}
-            fullWidth
-            required
-            sx={{ mb: 2, mt: 1 }}
+            variant="outlined"
+            inputProps={{ 'aria-label': 'Timeline name' }}
           />
           <TextField
+            margin="dense"
             label="Description"
+            fullWidth
             value={newTimelineDescription}
             onChange={(e) => setNewTimelineDescription(e.target.value)}
-            fullWidth
+            variant="outlined"
             multiline
-            rows={3}
+            rows={2}
+            inputProps={{ 'aria-label': 'Timeline description' }}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenCreateDialog(false)} color="secondary">
+          <Button onClick={() => setOpenCreateDialog(false)} color="inherit" aria-label="Cancel timeline creation">
             Cancel
           </Button>
-          <Button onClick={handleCreateTimeline} variant="contained" color="primary">
+          <Button
+            onClick={handleCreateTimeline}
+            variant="contained"
+            color="primary"
+            aria-label="Create timeline"
+          >
             Create
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={openDeleteDialog} onClose={handleCloseDeleteDialog} maxWidth="xs" fullWidth>
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete the timeline "{timelineToDelete?.name || 'Untitled'}"? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteDialog} color="inherit" aria-label="Cancel deletion">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteTimeline}
+            variant="contained"
+            color="error"
+            aria-label="Confirm deletion"
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>

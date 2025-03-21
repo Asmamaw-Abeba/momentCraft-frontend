@@ -9,8 +9,11 @@ import Register from './components/Register';
 import Timeline from './components/Timeline';
 import TimeLineMemories from './components/TimeLineMemories';
 import CreateTimeline from './components/CreateTimeline';
+import PublicTimelineViewer from './components/PublicTimelineViewer';
 import AddMemory from './components/AddMemory';
 import AuthContext, { AuthProvider } from './context/AuthContext';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Create a default theme (you can customize it if needed)
 const theme = createTheme({
@@ -34,6 +37,7 @@ const App = () => {
     <ThemeProvider theme={theme}> {/* Wrap the app with ThemeProvider */}
       <AuthProvider>
         <Router>
+          <ToastContainer />
           <Header />
           <Container>
             <Routes>
@@ -59,6 +63,7 @@ const App = () => {
               <Route path="/timelines/:timelineId" element={<TimeLineMemories />} />
               <Route path="/create-timeline" element={<CreateTimeline />} />
               <Route path="/add-memory/:timelineId?" element={<AddMemory />} />
+              <Route path="/timeline/public/:id" element={<PublicTimelineViewer />} />
             </Routes>
           </Container>
         </Router>
