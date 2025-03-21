@@ -124,12 +124,21 @@ const MemoryList = ({ refresh }) => {
     return videoExtensions.some((ext) => filename.toLowerCase().endsWith(ext));
   };
 
+  // Extract public_id from video URL
+  const getPublicId = (videoUrl) => {
+    const urlWithoutQuery = videoUrl.split('?')[0];
+    const uploadIndex = urlWithoutQuery.indexOf('/upload/');
+    if (uploadIndex === -1) return null;
+    const afterUpload = urlWithoutQuery.substring(uploadIndex + 8);
+    const lastDotIndex = afterUpload.lastIndexOf('.');
+    if (lastDotIndex === -1) return afterUpload;
+    return afterUpload.substring(0, lastDotIndex);
+  };
+
   // Generate thumbnail URL from video URL
   const getThumbnailUrl = (videoUrl) => {
-    const parts = videoUrl.split('/');
-    const filename = parts.pop().split('.')[0]; // e.g., "1742544650712"
-    const folder = parts[parts.length - 1]; // e.g., "memories"
-    const publicId = `${folder}/${filename}`; // e.g., "memories/1742544650712"
+    const publicId = getPublicId(videoUrl);
+    if (!publicId) return null;
     return `https://res.cloudinary.com/${process.env.REACT_APP_CLOUDINARY_CLOUD_NAME}/video/upload/w_300,h_300,c_fill,so_1,f_jpg/${publicId}.jpg`;
   };
 
