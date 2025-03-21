@@ -15,12 +15,21 @@ import {
   TextField,
   InputAdornment,
   Fade,
+  Modal,
+  Backdrop,
+  CircularProgress,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import { styled } from '@mui/system';
-import { Link } from 'react-router-dom';
 import axios from 'axios';
 import AuthContext from '../context/AuthContext';
 import SearchIcon from '@mui/icons-material/Search';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Styled Card with hover effect
 const StyledCard = styled(Card)(({ theme }) => ({
@@ -33,6 +42,19 @@ const StyledCard = styled(Card)(({ theme }) => ({
   overflow: 'hidden',
 }));
 
+// Modal style
+const modalStyle = {
+  position: 'absolute',
+  top: '50%',
+  left: '50%',
+  transform: 'translate(-50%, -50%)',
+  width: 400,
+  bgcolor: 'background.paper',
+  boxShadow: 24,
+  p: 4,
+  borderRadius: 8,
+};
+
 const MemoryList = ({ refresh }) => {
   const [memories, setMemories] = useState([]);
   const [filteredMemories, setFilteredMemories] = useState([]);
@@ -40,7 +62,14 @@ const MemoryList = ({ refresh }) => {
   const [selectedTimeline, setSelectedTimeline] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
-  const memoriesPerPage = 6; // Adjustable
+  const [editMemory, setEditMemory] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editMedia, setEditMedia] = useState(null);
+  const [loadingDelete, setLoadingDelete] = useState({});
+  const [loadingEdit, setLoadingEdit] = useState(false);
+  const [playingVideo, setPlayingVideo] = useState(null);
+  const memoriesPerPage = 6;
   const { token } = useContext(AuthContext);
 
   // Fetch memories
@@ -52,6 +81,7 @@ const MemoryList = ({ refresh }) => {
         setFilteredMemories(data || []);
       } catch (error) {
         console.error('Error fetching memories:', error);
+        toast.error('Failed to fetch memories');
       }
     };
     getMemories();
@@ -70,6 +100,7 @@ const MemoryList = ({ refresh }) => {
         setTimelines(response.data || []);
       } catch (error) {
         console.error('Error fetching timelines:', error);
+        toast.error('Failed to fetch timelines');
       }
     };
     getTimelines();
@@ -77,12 +108,13 @@ const MemoryList = ({ refresh }) => {
 
   // Filter memories based on search query
   useEffect(() => {
-    const filtered = memories.filter((memory) =>
-      (memory.title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-      (memory.description?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+    const filtered = memories.filter(
+      (memory) =>
+        (memory.title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (memory.description?.toLowerCase() || '').includes(searchQuery.toLowerCase())
     );
     setFilteredMemories(filtered);
-    setPage(1); // Reset to first page on search
+    setPage(1);
   }, [searchQuery, memories]);
 
   // Check if a file is a video
@@ -92,11 +124,20 @@ const MemoryList = ({ refresh }) => {
     return videoExtensions.some((ext) => filename.toLowerCase().endsWith(ext));
   };
 
+  // Generate thumbnail URL from video URL
+  const getThumbnailUrl = (videoUrl) => {
+    const parts = videoUrl.split('/');
+    const filename = parts.pop().split('.')[0]; // e.g., "1742544650712"
+    const folder = parts[parts.length - 1]; // e.g., "memories"
+    const publicId = `${folder}/${filename}`; // e.g., "memories/1742544650712"
+    return `https://res.cloudinary.com/${process.env.REACT_APP_CLOUDINARY_CLOUD_NAME}/video/upload/w_300,h_300,c_fill,so_1,f_jpg/${publicId}.jpg`;
+  };
+
   // Handle adding a memory to a timeline
   const handleAddToTimeline = async (memoryId) => {
     const timelineId = selectedTimeline[memoryId];
     if (!timelineId) {
-      alert('Please select a timeline');
+      toast.warn('Please select a timeline');
       return;
     }
 
@@ -114,10 +155,10 @@ const MemoryList = ({ refresh }) => {
       const { data } = await fetchMemories();
       setMemories(data);
       setSelectedTimeline((prev) => ({ ...prev, [memoryId]: '' }));
-      alert('Memory added to timeline successfully!');
+      toast.success('Memory added to timeline successfully!');
     } catch (error) {
       console.error('Error adding memory to timeline:', error);
-      alert('Failed to add memory to timeline');
+      toast.error('Failed to add memory to timeline');
     }
   };
 
@@ -129,6 +170,73 @@ const MemoryList = ({ refresh }) => {
     }));
   };
 
+  // Handle delete
+  const handleDelete = async (memoryId) => {
+    if (window.confirm('Are you sure you want to delete this memory?')) {
+      setLoadingDelete((prev) => ({ ...prev, [memoryId]: true }));
+      try {
+        await axios.delete(`http://localhost:5000/api/memories/${memoryId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setMemories(memories.filter((m) => m._id !== memoryId));
+        setFilteredMemories(filteredMemories.filter((m) => m._id !== memoryId));
+        toast.success('Memory deleted successfully!');
+      } catch (error) {
+        console.error('Error deleting memory:', error);
+        toast.error('Failed to delete memory');
+      } finally {
+        setLoadingDelete((prev) => ({ ...prev, [memoryId]: false }));
+      }
+    }
+  };
+
+  // Handle edit
+  const openEditModal = (memory) => {
+    setEditMemory(memory);
+    setEditTitle(memory.title || '');
+    setEditDescription(memory.description || '');
+    setEditMedia(null);
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setLoadingEdit(true);
+    const formData = new FormData();
+    formData.append('title', editTitle);
+    formData.append('description', editDescription);
+    if (editMedia) formData.append('media', editMedia);
+
+    try {
+      const response = await axios.put(
+        `http://localhost:5000/api/memories/${editMemory._id}`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const updatedMemory = response.data;
+      setMemories(memories.map((m) => (m._id === updatedMemory._id ? updatedMemory : m)));
+      setFilteredMemories(
+        filteredMemories.map((m) => (m._id === updatedMemory._id ? updatedMemory : m))
+      );
+      setEditMemory(null);
+      toast.success('Memory updated successfully!');
+    } catch (error) {
+      console.error('Error editing memory:', error);
+      toast.error('Failed to edit memory');
+    } finally {
+      setLoadingEdit(false);
+    }
+  };
+
+  // Handle video play
+  const handlePlayVideo = (memoryId) => {
+    setPlayingVideo(memoryId);
+  };
+
   // Pagination logic
   const totalPages = Math.ceil(filteredMemories.length / memoriesPerPage);
   const paginatedMemories = filteredMemories.slice(
@@ -138,6 +246,19 @@ const MemoryList = ({ refresh }) => {
 
   return (
     <Box sx={{ padding: { xs: 2, sm: 3 }, bgcolor: '#f5f5f5', minHeight: '100vh' }}>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
+
       {/* Header */}
       <Fade in>
         <Box sx={{ textAlign: 'center', mb: 4 }}>
@@ -194,25 +315,59 @@ const MemoryList = ({ refresh }) => {
                 <StyledCard>
                   {memory.media && (
                     isVideo(memory.media) ? (
-                      <Box sx={{ position: 'relative', paddingTop: '56.25%' /* 16:9 aspect ratio */ }}>
-                        <video
-                          controls
-                          style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'contain', // Show full video
-                            backgroundColor: '#000', // Black background for letterboxing
-                          }}
-                        >
-                          <source src={`http://localhost:5000/${memory.media}`} type="video/mp4" />
-                          Your browser does not support the video tag.
-                        </video>
-                      </Box>
+                      playingVideo === memory._id ? (
+                        <Box sx={{ position: 'relative', paddingTop: '56.25%' }}>
+                          <video
+                            controls
+                            autoPlay
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'contain',
+                              backgroundColor: '#000',
+                            }}
+                            onEnded={() => setPlayingVideo(null)}
+                          >
+                            <source src={memory.media} type="video/mp4" />
+                            Your browser does not support the video tag.
+                          </video>
+                        </Box>
+                      ) : (
+                        <Box sx={{ position: 'relative', paddingTop: '56.25%' }}>
+                          <img
+                            src={getThumbnailUrl(memory.media)}
+                            alt={memory.title}
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'contain',
+                              backgroundColor: '#000',
+                            }}
+                          />
+                          <IconButton
+                            sx={{
+                              position: 'absolute',
+                              top: '50%',
+                              left: '50%',
+                              transform: 'translate(-50%, -50%)',
+                              color: 'white',
+                              bgcolor: 'rgba(0, 0, 0, 0.5)',
+                              '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.7)' },
+                            }}
+                            onClick={() => handlePlayVideo(memory._id)}
+                          >
+                            <PlayArrowIcon fontSize="large" />
+                          </IconButton>
+                        </Box>
+                      )
                     ) : (
-                      <Box sx={{ position: 'relative', paddingTop: '56.25%' /* 16:9 aspect ratio as fallback */ }}>
+                      <Box sx={{ position: 'relative', paddingTop: '56.25%' }}>
                         <img
                           src={memory.media}
                           alt={memory.title}
@@ -222,8 +377,8 @@ const MemoryList = ({ refresh }) => {
                             left: 0,
                             width: '100%',
                             height: '100%',
-                            objectFit: 'contain', // Show full image
-                            backgroundColor: '#000', // Black background for letterboxing
+                            objectFit: 'contain',
+                            backgroundColor: '#000',
                           }}
                           onError={(e) => console.error('Image failed to load:', e)}
                         />
@@ -238,18 +393,26 @@ const MemoryList = ({ refresh }) => {
                       {memory.description || 'No description'}
                     </Typography>
                     {!isVideo(memory.media) && (
-                      <Typography variant="caption" sx={{ mt: 1, fontStyle: 'italic', display: 'block' }}>
+                      <Typography
+                        variant="caption"
+                        sx={{ mt: 1, fontStyle: 'italic', display: 'block' }}
+                      >
                         <strong>AI Caption:</strong> {memory.caption || 'No caption available.'}
                       </Typography>
                     )}
                     {isVideo(memory.media) && (
-                      <Typography variant="caption" sx={{ mt: 1, fontStyle: 'italic', display: 'block' }}>
-                        <strong>AI Summary:</strong> {memory.summary || 'No summary available.'}
+                      <Typography
+                        variant="caption"
+                        sx={{ mt: 1, fontStyle: 'italic', display: 'block' }}
+                      >
+                        <strong>AI Caption:</strong> {memory.caption || 'No caption available.'}
                       </Typography>
                     )}
                     {/* Timeline Selection */}
                     <FormControl fullWidth sx={{ mt: 2 }}>
-                      <InputLabel id={`timeline-select-label-${memory._id}`}>Add to Timeline</InputLabel>
+                      <InputLabel id={`timeline-select-label-${memory._id}`}>
+                        Add to Timeline
+                      </InputLabel>
                       <Select
                         labelId={`timeline-select-label-${memory._id}`}
                         value={selectedTimeline[memory._id] || ''}
@@ -264,14 +427,42 @@ const MemoryList = ({ refresh }) => {
                         ))}
                       </Select>
                     </FormControl>
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={() => handleAddToTimeline(memory._id)}
-                      sx={{ mt: 2, borderRadius: 20, px: 3 }}
-                    >
-                      Add to Timeline
-                    </Button>
+                    <Box sx={{ mt: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => handleAddToTimeline(memory._id)}
+                        sx={{ borderRadius: 20, px: 3 }}
+                      >
+                        Add to Timeline
+                      </Button>
+                      <Tooltip title="Edit Memory">
+                        <IconButton
+                          color="primary"
+                          onClick={() => openEditModal(memory)}
+                          disabled={loadingDelete[memory._id]}
+                        >
+                          {loadingDelete[memory._id] ? (
+                            <CircularProgress size={24} />
+                          ) : (
+                            <EditIcon />
+                          )}
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete Memory">
+                        <IconButton
+                          color="error"
+                          onClick={() => handleDelete(memory._id)}
+                          disabled={loadingDelete[memory._id]}
+                        >
+                          {loadingDelete[memory._id] ? (
+                            <CircularProgress size={24} />
+                          ) : (
+                            <DeleteIcon />
+                          )}
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
                   </CardContent>
                 </StyledCard>
               </Grid>
@@ -291,6 +482,69 @@ const MemoryList = ({ refresh }) => {
           )}
         </>
       )}
+
+      {/* Edit Modal */}
+      <Modal
+        open={!!editMemory}
+        onClose={() => setEditMemory(null)}
+        closeAfterTransition
+        BackdropComponent={Backdrop}
+        BackdropProps={{ timeout: 500 }}
+      >
+        <Fade in={!!editMemory}>
+          <Box sx={modalStyle}>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              Edit Memory
+            </Typography>
+            <form onSubmit={handleEditSubmit}>
+              <TextField
+                label="Title"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                fullWidth
+                sx={{ mb: 2 }}
+                disabled={loadingEdit}
+              />
+              <TextField
+                label="Description"
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                fullWidth
+                multiline
+                rows={3}
+                sx={{ mb: 2 }}
+                disabled={loadingEdit}
+              />
+              <TextField
+                type="file"
+                onChange={(e) => setEditMedia(e.target.files[0])}
+                fullWidth
+                sx={{ mb: 2 }}
+                inputProps={{ accept: 'image/*,video/*' }}
+                disabled={loadingEdit}
+              />
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  color="primary"
+                  disabled={loadingEdit}
+                  startIcon={loadingEdit ? <CircularProgress size={20} /> : null}
+                >
+                  {loadingEdit ? 'Saving...' : 'Save'}
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={() => setEditMemory(null)}
+                  disabled={loadingEdit}
+                >
+                  Cancel
+                </Button>
+              </Box>
+            </form>
+          </Box>
+        </Fade>
+      </Modal>
     </Box>
   );
 };

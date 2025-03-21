@@ -201,7 +201,7 @@ const Timeline = () => {
                     <CardMedia
                       component={timeline.memories[0].media.match(/\.(mp4|webm|ogg)$/) ? 'video' : 'img'}
                       // src={`http://localhost:5000/${timeline.memories[0].media}`}
-                      src={isVideo(timeline.memories[0].media) ? `${timeline.memories[0].media}` : `http://localhost:5000/${timeline.memories[0].media}`}
+                      src={timeline.memories[0].media}
                       controls={timeline.memories[0].media.match(/\.(mp4|webm|ogg)$/) }
                       sx={{ height: 150, objectFit: 'cover' }}
                     />

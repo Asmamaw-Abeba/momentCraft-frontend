@@ -254,7 +254,7 @@ const TimelineMemories = () => {
                               <CardMedia
                                 component={isVideo(memory.media) ? 'video' : 'img'}
                                 // src={`http://localhost:5000/${memory.media}`}
-                                src={isVideo(memory.media) ? `${memory.media}` : `http://localhost:5000/${memory.media}`}
+                                src={memory.media}
                                 controls={isVideo(memory.media)}
                                 autoPlay={false}
                                 muted={false}
