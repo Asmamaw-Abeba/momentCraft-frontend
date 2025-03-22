@@ -1,3 +1,6 @@
+
+
+
 // import React, { useState, useEffect, useContext } from 'react';
 // import { fetchMemories } from '../api';
 // import {
@@ -28,11 +31,13 @@
 // import axios from 'axios';
 // import AuthContext from '../context/AuthContext';
 // import SearchIcon from '@mui/icons-material/Search';
-// import DeleteIcon from '@mui/icons-material/Delete'
-// import AddIcon from '@mui/icons-material/Add';
+// import DeleteIcon from '@mui/icons-material/Delete';
 // import EditIcon from '@mui/icons-material/Edit';
 // import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 // import ShareIcon from '@mui/icons-material/Share';
+// import AddIcon from '@mui/icons-material/Add';
+// import ViewInArIcon from '@mui/icons-material/ViewInAr';
+// import 'aframe'; // Import A-Frame globally
 // import { ToastContainer, toast } from 'react-toastify';
 // import 'react-toastify/dist/ReactToastify.css';
 
@@ -81,14 +86,20 @@
 //   overflow: 'auto',
 // };
 
+// const arModalStyle = {
+//   width: '100vw',
+//   height: '100vh',
+//   bgcolor: 'black',
+// };
+
 // const MemoryList = ({ refresh }) => {
 //   const [memories, setMemories] = useState([]);
 //   const [filteredMemories, setFilteredMemories] = useState([]);
 //   const [timelines, setTimelines] = useState([]);
 //   const [selectedTimeline, setSelectedTimeline] = useState({});
 //   const [searchQuery, setSearchQuery] = useState('');
-//   const [sortBy, setSortBy] = useState('default'); // Added sort state
-//   const [filterTimeline, setFilterTimeline] = useState(''); // Added timeline filter
+//   const [sortBy, setSortBy] = useState('default');
+//   const [filterTimeline, setFilterTimeline] = useState('');
 //   const [page, setPage] = useState(1);
 //   const [editMemory, setEditMemory] = useState(null);
 //   const [editTitle, setEditTitle] = useState('');
@@ -97,9 +108,10 @@
 //   const [loadingDelete, setLoadingDelete] = useState({});
 //   const [loadingEdit, setLoadingEdit] = useState(false);
 //   const [playingVideo, setPlayingVideo] = useState(null);
-//   const [previewMemory, setPreviewMemory] = useState(null); // Added for preview modal
-//   const [selectedMemories, setSelectedMemories] = useState([]); // Added for bulk actions
-//   const [loading, setLoading] = useState(true); // Added for skeleton
+//   const [previewMemory, setPreviewMemory] = useState(null);
+//   const [selectedMemories, setSelectedMemories] = useState([]);
+//   const [loading, setLoading] = useState(true);
+//   const [arMode, setArMode] = useState(null);
 //   const memoriesPerPage = 6;
 //   const { token } = useContext(AuthContext);
 
@@ -374,6 +386,24 @@
 //     setSelectedMemories((prev) =>
 //       prev.includes(memoryId) ? prev.filter((id) => id !== memoryId) : [...prev, memoryId]
 //     );
+//   };
+
+//   // Handle AR view
+//   const handleARView = async (memory) => {
+//     if (!navigator.xr) {
+//       toast.error('AR is not supported on this device');
+//       return;
+//     }
+//     const supported = await navigator.xr.isSessionSupported('immersive-ar');
+//     if (!supported) {
+//       toast.error('Immersive AR is not supported on this browser');
+//       return;
+//     }
+//     if (!memory.location && !memory["3dModelUrl"]) { // Fixed syntax here
+//       toast.warn('Memory lacks location or 3D model for AR');
+//       return;
+//     }
+//     setArMode(memory._id);
 //   };
 
 //   // Pagination logic
@@ -711,6 +741,15 @@
 //                             <ShareIcon />
 //                           </IconButton>
 //                         </Tooltip>
+//                         <Tooltip title="View in AR">
+//                           <IconButton
+//                             color="secondary"
+//                             onClick={() => handleARView(memory)}
+//                             aria-label={`View ${memory.title || 'Untitled'} in AR`}
+//                           >
+//                             <ViewInArIcon />
+//                           </IconButton>
+//                         </Tooltip>
 //                       </Box>
 //                     </CardContent>
 //                   </StyledCard>
@@ -832,12 +871,57 @@
 //           </Box>
 //         </Fade>
 //       </Modal>
+
+//       {/* AR Modal */}
+//       <Modal
+//         open={!!arMode}
+//         onClose={() => setArMode(null)}
+//         closeAfterTransition
+//         BackdropComponent={Backdrop}
+//         BackdropProps={{ timeout: 500 }}
+//       >
+//         <Fade in={!!arMode}>
+//           <Box sx={arModalStyle}>
+//             <a-scene embedded arjs="sourceType: webcam;">
+//               <a-asset-item
+//                 id="landmarkModel"
+//                 src={
+//                   memories.find((m) => m._id === arMode)?.["3dModelUrl"] || // Fixed syntax here
+//                   'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF-Binary/Duck.glb'
+//                 }
+//               />
+//               <a-entity
+//                 gltf-model="#landmarkModel"
+//                 position="0 0 -5"
+//                 scale="0.1 0.1 0.1"
+//                 rotation="0 0 0"
+//                 animation="property: rotation; to: 0 360 0; loop: true; dur: 5000"
+//               />
+//               <a-camera position="0 1.6 0" />
+//             </a-scene>
+//             <Typography
+//               variant="body2"
+//               sx={{ color: 'white', textAlign: 'center', mt: 2 }}
+//             >
+//               Point your camera to place the model in your space!
+//             </Typography>
+//             <Button
+//               variant="contained"
+//               color="primary"
+//               onClick={() => setArMode(null)}
+//               sx={{ position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)' }}
+//               aria-label="Exit AR mode"
+//             >
+//               Exit AR
+//             </Button>
+//           </Box>
+//         </Fade>
+//       </Modal>
 //     </Box>
 //   );
 // };
 
 // export default MemoryList;
-
 
 import React, { useState, useEffect, useContext } from 'react';
 import { fetchMemories } from '../api';
@@ -867,6 +951,7 @@ import {
 } from '@mui/material';
 import { styled } from '@mui/system';
 import axios from 'axios';
+import { Link } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import SearchIcon from '@mui/icons-material/Search';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -875,7 +960,8 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import ShareIcon from '@mui/icons-material/Share';
 import AddIcon from '@mui/icons-material/Add';
 import ViewInArIcon from '@mui/icons-material/ViewInAr';
-import 'aframe'; // Import A-Frame globally
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import 'aframe';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -943,6 +1029,7 @@ const MemoryList = ({ refresh }) => {
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editMedia, setEditMedia] = useState(null);
+  const [editVisibility, setEditVisibility] = useState('private'); // New state for visibility
   const [loadingDelete, setLoadingDelete] = useState({});
   const [loadingEdit, setLoadingEdit] = useState(false);
   const [playingVideo, setPlayingVideo] = useState(null);
@@ -958,7 +1045,7 @@ const MemoryList = ({ refresh }) => {
     const getMemories = async () => {
       try {
         setLoading(true);
-        const { data } = await fetchMemories();
+        const { data } = await fetchMemories(token);
         setMemories(data || []);
         setFilteredMemories(data || []);
       } catch (error) {
@@ -976,10 +1063,7 @@ const MemoryList = ({ refresh }) => {
     const getTimelines = async () => {
       try {
         const response = await axios.get('http://localhost:5000/api/timelines', {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         });
         setTimelines(response.data || []);
       } catch (error) {
@@ -1052,12 +1136,7 @@ const MemoryList = ({ refresh }) => {
       await axios.put(
         `http://localhost:5000/api/timelines/${timelineId}/memories/${memoryId}`,
         {},
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } }
       );
       const { data } = await fetchMemories();
       setMemories(data);
@@ -1086,12 +1165,7 @@ const MemoryList = ({ refresh }) => {
           axios.put(
             `http://localhost:5000/api/timelines/${timelineId}/memories/${memoryId}`,
             {},
-            {
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
-            }
+            { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } }
           )
         )
       );
@@ -1165,6 +1239,7 @@ const MemoryList = ({ refresh }) => {
     setEditMemory(memory);
     setEditTitle(memory.title || '');
     setEditDescription(memory.description || '');
+    setEditVisibility(memory.visibility || 'private');
     setEditMedia(null);
   };
 
@@ -1174,18 +1249,14 @@ const MemoryList = ({ refresh }) => {
     const formData = new FormData();
     formData.append('title', editTitle);
     formData.append('description', editDescription);
+    formData.append('visibility', editVisibility);
     if (editMedia) formData.append('media', editMedia);
 
     try {
       const response = await axios.put(
         `http://localhost:5000/api/memories/${editMemory._id}`,
         formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` } }
       );
       const updatedMemory = response.data;
       setMemories(memories.map((m) => (m._id === updatedMemory._id ? updatedMemory : m)));
@@ -1237,7 +1308,7 @@ const MemoryList = ({ refresh }) => {
       toast.error('Immersive AR is not supported on this browser');
       return;
     }
-    if (!memory.location && !memory["3dModelUrl"]) { // Fixed syntax here
+    if (!memory.location && !memory["3dModelUrl"]) {
       toast.warn('Memory lacks location or 3D model for AR');
       return;
     }
@@ -1270,29 +1341,13 @@ const MemoryList = ({ refresh }) => {
 
   return (
     <Box sx={{ bgcolor: '#f5f5f5', minHeight: '100vh' }}>
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-      />
-
-      {/* Sticky Header */}
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
       <StyledAppBar position="sticky">
         <Toolbar sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography
-            variant="h6"
-            sx={{ color: '#fff', fontWeight: 'bold' }}
-            aria-label="Your Memories"
-          >
+          <Typography variant="h6" sx={{ color: '#fff', fontWeight: 'bold' }}>
             Your Memories
           </Typography>
+          <Button color="inherit" component={Link} to="/friends">Friends</Button>
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
             <TextField
               label="Search Memories"
@@ -1301,14 +1356,7 @@ const MemoryList = ({ refresh }) => {
               variant="outlined"
               size="small"
               sx={{ width: { xs: '150px', sm: '200px' }, background: '#fff', borderRadius: 1 }}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              }}
-              inputProps={{ 'aria-label': 'Search memories by title or description' }}
+              InputProps={{ endAdornment: <InputAdornment position="end"><SearchIcon /></InputAdornment> }}
             />
             <Select
               value={sortBy}
@@ -1316,7 +1364,6 @@ const MemoryList = ({ refresh }) => {
               variant="outlined"
               size="small"
               sx={{ minWidth: 120, background: '#fff', borderRadius: 1 }}
-              aria-label="Sort memories"
             >
               <MenuItem value="default">Default</MenuItem>
               <MenuItem value="title">Title</MenuItem>
@@ -1329,13 +1376,10 @@ const MemoryList = ({ refresh }) => {
               variant="outlined"
               size="small"
               sx={{ minWidth: 120, background: '#fff', borderRadius: 1 }}
-              aria-label="Filter by timeline"
             >
               <MenuItem value="">All Timelines</MenuItem>
               {timelines.map((timeline) => (
-                <MenuItem key={timeline._id} value={timeline._id}>
-                  {timeline.name}
-                </MenuItem>
+                <MenuItem key={timeline._id} value={timeline._id}>{timeline.name}</MenuItem>
               ))}
             </Select>
             {selectedMemories.length > 0 && (
@@ -1348,32 +1392,21 @@ const MemoryList = ({ refresh }) => {
                       variant="outlined"
                       size="small"
                       sx={{ background: '#fff', borderRadius: 1 }}
-                      aria-label="Select timeline for bulk add"
                     >
                       <MenuItem value="">Select Timeline</MenuItem>
                       {timelines.map((timeline) => (
-                        <MenuItem key={timeline._id} value={timeline._id}>
-                          {timeline.name}
-                        </MenuItem>
+                        <MenuItem key={timeline._id} value={timeline._id}>{timeline.name}</MenuItem>
                       ))}
                     </Select>
                   </FormControl>
                 </Tooltip>
                 <Tooltip title="Add Selected Memories">
-                  <IconButton
-                    color="inherit"
-                    onClick={handleBulkAddToTimeline}
-                    aria-label="Add selected memories to timeline"
-                  >
+                  <IconButton color="inherit" onClick={handleBulkAddToTimeline}>
                     <AddIcon />
                   </IconButton>
                 </Tooltip>
                 <Tooltip title="Delete Selected Memories">
-                  <IconButton
-                    color="inherit"
-                    onClick={handleBulkDelete}
-                    aria-label="Delete selected memories"
-                  >
+                  <IconButton color="inherit" onClick={handleBulkDelete}>
                     <DeleteIcon />
                   </IconButton>
                 </Tooltip>
@@ -1383,7 +1416,6 @@ const MemoryList = ({ refresh }) => {
         </Toolbar>
       </StyledAppBar>
 
-      {/* Main Content */}
       <Box sx={{ padding: { xs: 2, sm: 3 } }}>
         <Fade in={!loading}>
           <Box sx={{ textAlign: 'center', mb: 4 }}>
@@ -1393,7 +1425,6 @@ const MemoryList = ({ refresh }) => {
           </Box>
         </Fade>
 
-        {/* Memories Grid */}
         {filteredMemories.length === 0 ? (
           <Box sx={{ textAlign: 'center', mt: 5 }}>
             <Typography variant="h6" color="textSecondary">
@@ -1428,7 +1459,6 @@ const MemoryList = ({ refresh }) => {
                                 }}
                                 onEnded={() => setPlayingVideo(null)}
                                 onClick={() => handlePreview(memory)}
-                                aria-label={`Video: ${memory.title || 'Untitled'}`}
                               >
                                 <source src={memory.media} type="video/mp4" />
                                 Your browser does not support the video tag.
@@ -1462,7 +1492,6 @@ const MemoryList = ({ refresh }) => {
                                   '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.7)' },
                                 }}
                                 onClick={() => handlePlayVideo(memory._id)}
-                                aria-label={`Play video: ${memory.title || 'Untitled'}`}
                               >
                                 <PlayArrowIcon fontSize="large" />
                               </IconButton>
@@ -1493,7 +1522,6 @@ const MemoryList = ({ refresh }) => {
                         checked={selectedMemories.includes(memory._id)}
                         onChange={() => handleSelectMemory(memory._id)}
                         sx={{ position: 'absolute', top: 8, left: 8 }}
-                        aria-label={`Select memory: ${memory.title || 'Untitled'}`}
                       />
                     </Box>
                     <CardContent>
@@ -1504,37 +1532,30 @@ const MemoryList = ({ refresh }) => {
                         {memory.description || 'No description'}
                       </Typography>
                       {!isVideo(memory.media) && (
-                        <Typography
-                          variant="caption"
-                          sx={{ mt: 1, fontStyle: 'italic', display: 'block' }}
-                        >
+                        <Typography variant="caption" sx={{ mt: 1, fontStyle: 'italic', display: 'block' }}>
                           <strong>AI Caption:</strong> {memory.caption || 'No caption available.'}
                         </Typography>
                       )}
                       {isVideo(memory.media) && (
-                        <Typography
-                          variant="caption"
-                          sx={{ mt: 1, fontStyle: 'italic', display: 'block' }}
-                        >
+                        <Typography variant="caption" sx={{ mt: 1, fontStyle: 'italic', display: 'block' }}>
                           <strong>AI Summary:</strong> {memory.summary || 'No summary available.'}
                         </Typography>
                       )}
+                      <Typography variant="caption" sx={{ mt: 1, display: 'block' }}>
+                        <VisibilityIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5 }} />
+                        {memory.visibility === 'private' ? 'Private' : memory.visibility === 'friends' ? 'Friends Only' : 'Public'}
+                      </Typography>
                       <FormControl fullWidth sx={{ mt: 2 }}>
-                        <InputLabel id={`timeline-select-label-${memory._id}`}>
-                          Add to Timeline
-                        </InputLabel>
+                        <InputLabel id={`timeline-select-label-${memory._id}`}>Add to Timeline</InputLabel>
                         <Select
                           labelId={`timeline-select-label-${memory._id}`}
                           value={selectedTimeline[memory._id] || ''}
                           label="Add to Timeline"
                           onChange={(e) => handleTimelineChange(memory._id, e)}
-                          aria-label={`Select timeline for ${memory.title || 'Untitled'}`}
                         >
                           <MenuItem value="">None</MenuItem>
                           {timelines.map((timeline) => (
-                            <MenuItem key={timeline._id} value={timeline._id}>
-                              {timeline.name}
-                            </MenuItem>
+                            <MenuItem key={timeline._id} value={timeline._id}>{timeline.name}</MenuItem>
                           ))}
                         </Select>
                       </FormControl>
@@ -1545,7 +1566,6 @@ const MemoryList = ({ refresh }) => {
                             color="primary"
                             onClick={() => handleAddToTimeline(memory._id)}
                             sx={{ borderRadius: 20, px: 3 }}
-                            aria-label={`Add ${memory.title || 'Untitled'} to timeline`}
                           >
                             Add
                           </Button>
@@ -1555,7 +1575,6 @@ const MemoryList = ({ refresh }) => {
                             color="primary"
                             onClick={() => openEditModal(memory)}
                             disabled={loadingDelete[memory._id]}
-                            aria-label={`Edit ${memory.title || 'Untitled'}`}
                           >
                             <EditIcon />
                           </IconButton>
@@ -1565,26 +1584,17 @@ const MemoryList = ({ refresh }) => {
                             color="error"
                             onClick={() => handleDelete(memory._id)}
                             disabled={loadingDelete[memory._id]}
-                            aria-label={`Delete ${memory.title || 'Untitled'}`}
                           >
                             {loadingDelete[memory._id] ? <Skeleton width={24} height={24} /> : <DeleteIcon />}
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Share Memory">
-                          <IconButton
-                            color="info"
-                            onClick={() => handleShare(memory._id)}
-                            aria-label={`Share ${memory.title || 'Untitled'}`}
-                          >
+                          <IconButton color="info" onClick={() => handleShare(memory._id)}>
                             <ShareIcon />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="View in AR">
-                          <IconButton
-                            color="secondary"
-                            onClick={() => handleARView(memory)}
-                            aria-label={`View ${memory.title || 'Untitled'} in AR`}
-                          >
+                          <IconButton color="secondary" onClick={() => handleARView(memory)}>
                             <ViewInArIcon />
                           </IconButton>
                         </Tooltip>
@@ -1602,7 +1612,6 @@ const MemoryList = ({ refresh }) => {
                   onChange={(e, value) => setPage(value)}
                   color="primary"
                   size="large"
-                  aria-label="Memory pagination"
                 />
               </Box>
             )}
@@ -1611,18 +1620,10 @@ const MemoryList = ({ refresh }) => {
       </Box>
 
       {/* Edit Modal */}
-      <Modal
-        open={!!editMemory}
-        onClose={() => setEditMemory(null)}
-        closeAfterTransition
-        BackdropComponent={Backdrop}
-        BackdropProps={{ timeout: 500 }}
-      >
+      <Modal open={!!editMemory} onClose={() => setEditMemory(null)} closeAfterTransition>
         <Fade in={!!editMemory}>
           <Box sx={editModalStyle}>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Edit Memory
-            </Typography>
+            <Typography variant="h6" sx={{ mb: 2 }}>Edit Memory</Typography>
             <form onSubmit={handleEditSubmit}>
               <TextField
                 label="Title"
@@ -1631,7 +1632,6 @@ const MemoryList = ({ refresh }) => {
                 fullWidth
                 sx={{ mb: 2 }}
                 disabled={loadingEdit}
-                inputProps={{ 'aria-label': 'Edit memory title' }}
               />
               <TextField
                 label="Description"
@@ -1642,32 +1642,33 @@ const MemoryList = ({ refresh }) => {
                 rows={3}
                 sx={{ mb: 2 }}
                 disabled={loadingEdit}
-                inputProps={{ 'aria-label': 'Edit memory description' }}
               />
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Visibility</InputLabel>
+                <Select
+                  value={editVisibility}
+                  onChange={(e) => setEditVisibility(e.target.value)}
+                  disabled={loadingEdit}
+                  label="Visibility"
+                >
+                  <MenuItem value="private">Private (Only Me)</MenuItem>
+                  <MenuItem value="friends">Friends Only</MenuItem>
+                  <MenuItem value="public">Public</MenuItem>
+                </Select>
+              </FormControl>
               <TextField
                 type="file"
                 onChange={(e) => setEditMedia(e.target.files[0])}
                 fullWidth
                 sx={{ mb: 2 }}
-                inputProps={{ accept: 'image/*,video/*', 'aria-label': 'Upload new media' }}
+                inputProps={{ accept: 'image/*,video/*' }}
                 disabled={loadingEdit}
               />
               <Box sx={{ display: 'flex', gap: 2 }}>
-                <Button
-                  type="submit"
-                  variant="contained"
-                  color="primary"
-                  disabled={loadingEdit}
-                  aria-label="Save edited memory"
-                >
+                <Button type="submit" variant="contained" color="primary" disabled={loadingEdit}>
                   {loadingEdit ? <Skeleton width={60} height={24} /> : 'Save'}
                 </Button>
-                <Button
-                  variant="outlined"
-                  onClick={() => setEditMemory(null)}
-                  disabled={loadingEdit}
-                  aria-label="Cancel editing"
-                >
+                <Button variant="outlined" onClick={() => setEditMemory(null)} disabled={loadingEdit}>
                   Cancel
                 </Button>
               </Box>
@@ -1677,13 +1678,7 @@ const MemoryList = ({ refresh }) => {
       </Modal>
 
       {/* Preview Modal */}
-      <Modal
-        open={!!previewMemory}
-        onClose={() => setPreviewMemory(null)}
-        closeAfterTransition
-        BackdropComponent={Backdrop}
-        BackdropProps={{ timeout: 500 }}
-      >
+      <Modal open={!!previewMemory} onClose={() => setPreviewMemory(null)} closeAfterTransition>
         <Fade in={!!previewMemory}>
           <Box sx={previewModalStyle}>
             {previewMemory && (
@@ -1692,7 +1687,6 @@ const MemoryList = ({ refresh }) => {
                   controls
                   autoPlay
                   style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }}
-                  aria-label={`Preview video: ${previewMemory.title || 'Untitled'}`}
                 >
                   <source src={previewMemory.media} type="video/mp4" />
                   Your browser does not support the video tag.
@@ -1711,20 +1705,14 @@ const MemoryList = ({ refresh }) => {
       </Modal>
 
       {/* AR Modal */}
-      <Modal
-        open={!!arMode}
-        onClose={() => setArMode(null)}
-        closeAfterTransition
-        BackdropComponent={Backdrop}
-        BackdropProps={{ timeout: 500 }}
-      >
+      <Modal open={!!arMode} onClose={() => setArMode(null)} closeAfterTransition>
         <Fade in={!!arMode}>
           <Box sx={arModalStyle}>
             <a-scene embedded arjs="sourceType: webcam;">
               <a-asset-item
                 id="landmarkModel"
                 src={
-                  memories.find((m) => m._id === arMode)?.["3dModelUrl"] || // Fixed syntax here
+                  memories.find((m) => m._id === arMode)?.["3dModelUrl"] ||
                   'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF-Binary/Duck.glb'
                 }
               />
@@ -1737,10 +1725,7 @@ const MemoryList = ({ refresh }) => {
               />
               <a-camera position="0 1.6 0" />
             </a-scene>
-            <Typography
-              variant="body2"
-              sx={{ color: 'white', textAlign: 'center', mt: 2 }}
-            >
+            <Typography variant="body2" sx={{ color: 'white', textAlign: 'center', mt: 2 }}>
               Point your camera to place the model in your space!
             </Typography>
             <Button
@@ -1748,7 +1733,6 @@ const MemoryList = ({ refresh }) => {
               color="primary"
               onClick={() => setArMode(null)}
               sx={{ position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)' }}
-              aria-label="Exit AR mode"
             >
               Exit AR
             </Button>

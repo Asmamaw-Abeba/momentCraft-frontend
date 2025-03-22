@@ -11,6 +11,7 @@ import TimeLineMemories from './components/TimeLineMemories';
 import CreateTimeline from './components/CreateTimeline';
 import PublicTimelineViewer from './components/PublicTimelineViewer';
 import AddMemory from './components/AddMemory';
+import FriendsManager from './components/FriendsManager';
 import AuthContext, { AuthProvider } from './context/AuthContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -64,6 +65,7 @@ const App = () => {
               <Route path="/create-timeline" element={<CreateTimeline />} />
               <Route path="/add-memory/:timelineId?" element={<AddMemory />} />
               <Route path="/timeline/public/:id" element={<PublicTimelineViewer />} />
+              <Route path="/friends" element={<FriendsManager />} />
             </Routes>
           </Container>
         </Router>
