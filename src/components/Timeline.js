@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
   Box,
@@ -20,33 +20,24 @@ import {
   MenuItem,
   Select,
   Pagination,
-  AppBar,
-  Toolbar,
   Skeleton,
+  List,
+  ListItem,
+  ListItemText,
+  Checkbox,
 } from '@mui/material';
-import { Add as AddIcon, Delete as DeleteIcon, Share as ShareIcon } from '@mui/icons-material';
-import { Link } from 'react-router-dom';
+import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { styled } from '@mui/system';
 import Carousel from 'react-material-ui-carousel';
 import AuthContext from '../context/AuthContext';
+import Header from './Header'; // Import the Header component
 
-// Styled Card with hover effect
 const StyledCard = styled(Card)(({ theme }) => ({
   transition: 'transform 0.3s, box-shadow 0.3s',
-  '&:hover': {
-    transform: 'scale(1.03)',
-    boxShadow: theme.shadows[6],
-  },
+  '&:hover': { transform: 'scale(1.03)', boxShadow: theme.shadows[6] },
   borderRadius: 12,
   overflow: 'hidden',
-}));
-
-// Styled AppBar for sticky header
-const StyledAppBar = styled(AppBar)(({ theme }) => ({
-  background: 'linear-gradient(45deg, #1976d2, #42a5f5)',
-  boxShadow: theme?.shadows?.[4] || '0px 4px 10px rgba(0, 0, 0, 0.1)',
-  padding: '0 16px',
 }));
 
 const Timeline = () => {
@@ -57,27 +48,32 @@ const Timeline = () => {
   const [newTimelineDescription, setNewTimelineDescription] = useState('');
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [openShareDialog, setOpenShareDialog] = useState(false);
   const [timelineToDelete, setTimelineToDelete] = useState(null);
+  const [timelineToShare, setTimelineToShare] = useState(null);
+  const [friends, setFriends] = useState([]);
+  const [selectedFriends, setSelectedFriends] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sortBy, setSortBy] = useState('name');
   const [page, setPage] = useState(1);
-  const [maxThumbnails, setMaxThumbnails] = useState(3); // Dynamic thumbnail limit
+  const [maxThumbnails, setMaxThumbnails] = useState(3);
+  const [soundOn, setSoundOn] = useState(false); // For Header sound toggle
   const timelinesPerPage = 6;
-  const navigate = useNavigate();
   const { token } = useContext(AuthContext);
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchTimelines();
-  }, []);
+  // Navigation handlers for Header
+  const handleSoundToggle = () => setSoundOn((prev) => !prev);
+  const handleExploreMemories = () => navigate('/memories');
+  const handleManageFriends = () => navigate('/friends');
+  const handleJoinNow = () => navigate('/register');
 
-  const fetchTimelines = async () => {
+  // Memoize fetch functions
+  const fetchTimelines = useCallback(async () => {
     try {
       const response = await axios.get('http://localhost:5000/api/timelines', {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       setTimelines(response.data);
       setFilteredTimelines(response.data);
@@ -88,10 +84,31 @@ const Timeline = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
-  // Handle search and sort
-  const handleSearchAndSort = () => {
+  const fetchFriends = useCallback(async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/auth/me/friends', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setFriends(response.data.friends || []);
+    } catch (error) {
+      console.error('Error fetching friends:', error);
+      toast.error('Failed to load friends');
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (token) {
+      fetchTimelines();
+      fetchFriends();
+    } else {
+      setLoading(false); // No token, no fetch
+    }
+  }, [fetchTimelines, fetchFriends, token]);
+
+  // Memoize search and sort handler
+  const handleSearchAndSort = useCallback(() => {
     let result = [...timelines];
     if (searchQuery) {
       result = result.filter((timeline) =>
@@ -107,11 +124,11 @@ const Timeline = () => {
     }
     setFilteredTimelines(result);
     setPage(1);
-  };
+  }, [searchQuery, sortBy, timelines]);
 
   useEffect(() => {
     handleSearchAndSort();
-  }, [searchQuery, sortBy, timelines]);
+  }, [handleSearchAndSort]);
 
   const handleCreateTimeline = async () => {
     if (!newTimelineName.trim()) {
@@ -121,16 +138,8 @@ const Timeline = () => {
     try {
       const response = await axios.post(
         'http://localhost:5000/api/timelines',
-        {
-          name: newTimelineName,
-          description: newTimelineDescription,
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { name: newTimelineName, description: newTimelineDescription },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       setTimelines((prev) => [...prev, response.data]);
       setNewTimelineName('');
@@ -147,10 +156,7 @@ const Timeline = () => {
     if (!timelineToDelete) return;
     try {
       await axios.delete(`http://localhost:5000/api/timelines/${timelineToDelete._id}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       setTimelines((prev) => prev.filter((t) => t._id !== timelineToDelete._id));
       setOpenDeleteDialog(false);
@@ -162,94 +168,153 @@ const Timeline = () => {
     }
   };
 
+  const handleShareWithFriends = async () => {
+    if (!timelineToShare || selectedFriends.length === 0) {
+      toast.error('Please select at least one friend to share with');
+      return;
+    }
+    try {
+      await axios.post(
+        'http://localhost:5000/api/auth/share-timeline',
+        { timelineId: timelineToShare._id, friendIds: selectedFriends },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setOpenShareDialog(false);
+      setSelectedFriends([]);
+      setTimelineToShare(null);
+      toast.success('Timeline shared with friends successfully!');
+    } catch (error) {
+      console.error('Error sharing timeline:', error);
+      toast.error(error.response?.data?.message || 'Failed to share timeline');
+    }
+  };
+
   const handleOpenDeleteDialog = (timeline) => {
     setTimelineToDelete(timeline);
     setOpenDeleteDialog(true);
   };
 
-  const handleCloseDeleteDialog = () => {
-    setOpenDeleteDialog(false);
-    setTimelineToDelete(null);
+  const handleOpenShareDialog = (timeline) => {
+    setTimelineToShare(timeline);
+    setSelectedFriends([]);
+    setOpenShareDialog(true);
   };
 
-  const handleRetry = () => {
-    setError(null);
-    setLoading(true);
-    fetchTimelines();
+  const handleCloseShareDialog = () => {
+    setOpenShareDialog(false);
+    setTimelineToShare(null);
+    setSelectedFriends([]);
   };
 
-  const handleShareAll = () => {
-    const shareUrl = `${window.location.origin}/api/timelines`;
-    navigator.clipboard.writeText(shareUrl);
-    toast.success('Timelines page link copied to clipboard!');
+  const handleFriendToggle = (friendId) => {
+    setSelectedFriends((prev) =>
+      prev.includes(friendId) ? prev.filter((id) => id !== friendId) : [...prev, friendId]
+    );
   };
 
-  // Pagination logic
   const paginatedTimelines = filteredTimelines.slice(
     (page - 1) * timelinesPerPage,
     page * timelinesPerPage
   );
   const totalPages = Math.ceil(filteredTimelines.length / timelinesPerPage);
 
+  if (!token) {
+    return (
+      <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5' }}>
+        <Header
+          token={token}
+          onExplore={handleExploreMemories}
+          onFriends={handleManageFriends}
+          soundOn={soundOn}
+          onSoundToggle={handleSoundToggle}
+          onJoin={handleJoinNow}
+        />
+        <Box sx={{ textAlign: 'center', mt: 8 }}>
+          <Typography variant="h6">Please log in to view timelines.</Typography>
+        </Box>
+      </Box>
+    );
+  }
+
   if (loading) {
     return (
-      <Box sx={{ padding: { xs: 2, sm: 3, md: 4 }, minHeight: '100vh', bgcolor: '#f5f5f5' }}>
-        <Grid container spacing={3}>
-          {[...Array(6)].map((_, index) => (
-            <Grid item xs={12} sm={6} md={4} key={index}>
-              <Skeleton variant="rectangular" height={180} sx={{ borderRadius: 12 }} />
-              <Skeleton variant="text" width="80%" sx={{ mt: 1 }} />
-              <Skeleton variant="text" width="60%" />
-              <Skeleton variant="text" width="40%" />
-            </Grid>
-          ))}
-        </Grid>
+      <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5' }}>
+        <Header
+          token={token}
+          onExplore={handleExploreMemories}
+          onFriends={handleManageFriends}
+          soundOn={soundOn}
+          onSoundToggle={handleSoundToggle}
+          onJoin={handleJoinNow}
+        />
+        <Box sx={{ padding: { xs: 2, sm: 3, md: 4 }, mt: 8 }}>
+          <Grid container spacing={3}>
+            {[...Array(6)].map((_, index) => (
+              <Grid item xs={12} sm={6} md={4} key={index}>
+                <Skeleton variant="rectangular" height={180} sx={{ borderRadius: 12 }} />
+                <Skeleton variant="text" width="80%" sx={{ mt: 1 }} />
+                <Skeleton variant="text" width="60%" />
+                <Skeleton variant="text" width="40%" />
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
       </Box>
     );
   }
 
   if (error) {
     return (
-      <Box sx={{ textAlign: 'center', mt: 5 }}>
-        <Typography color="error" variant="h6">{error}</Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleRetry}
-          sx={{ mt: 2 }}
-          aria-label="Retry loading timelines"
-        >
-          Retry
-        </Button>
+      <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5' }}>
+        <Header
+          token={token}
+          onExplore={handleExploreMemories}
+          onFriends={handleManageFriends}
+          soundOn={soundOn}
+          onSoundToggle={handleSoundToggle}
+          onJoin={handleJoinNow}
+        />
+        <Box sx={{ textAlign: 'center', mt: 8 }}>
+          <Typography color="error" variant="h6">{error}</Typography>
+          <Button variant="contained" color="primary" onClick={fetchTimelines} sx={{ mt: 2 }}>
+            Retry
+          </Button>
+        </Box>
       </Box>
     );
   }
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5' }}>
-      {/* Sticky Header */}
-      <StyledAppBar position="sticky">
-        <Toolbar sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6" sx={{ color: '#fff', fontWeight: 'bold' }}>
+      <Header
+        token={token}
+        onExplore={handleExploreMemories}
+        onFriends={handleManageFriends}
+        soundOn={soundOn}
+        onSoundToggle={handleSoundToggle}
+        onJoin={handleJoinNow}
+      />
+      <Box sx={{ padding: { xs: 2, sm: 3, md: 4 }, mt: 8 }}>
+        {/* Search, Sort, and Create Controls */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
             Timelines
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
             <TextField
               label="Search Timelines"
               variant="outlined"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              sx={{ width: { xs: '150px', sm: '200px' }, background: '#fff', borderRadius: 1 }}
+              sx={{ width: { xs: '150px', sm: '200px' }, borderRadius: 1 }}
               size="small"
-              inputProps={{ 'aria-label': 'Search timelines by name' }}
             />
             <Select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               variant="outlined"
-              sx={{ minWidth: 120, background: '#fff', borderRadius: 1 }}
+              sx={{ minWidth: 120, borderRadius: 1 }}
               size="small"
-              aria-label="Sort timelines"
             >
               <MenuItem value="name">Name</MenuItem>
               <MenuItem value="memories">Memories</MenuItem>
@@ -259,38 +324,21 @@ const Timeline = () => {
               value={maxThumbnails}
               onChange={(e) => setMaxThumbnails(e.target.value)}
               variant="outlined"
-              sx={{ minWidth: 80, background: '#fff', borderRadius: 1 }}
+              sx={{ minWidth: 80, borderRadius: 1 }}
               size="small"
-              aria-label="Set maximum thumbnails"
             >
               <MenuItem value={1}>1</MenuItem>
               <MenuItem value={3}>3</MenuItem>
               <MenuItem value={5}>5</MenuItem>
             </Select>
             <Tooltip title="Create New Timeline">
-              <IconButton
-                color="inherit"
-                onClick={() => setOpenCreateDialog(true)}
-                aria-label="Create new timeline"
-              >
+              <IconButton color="primary" onClick={() => setOpenCreateDialog(true)}>
                 <AddIcon />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Share All Timelines">
-              <IconButton
-                color="inherit"
-                onClick={handleShareAll}
-                aria-label="Share all timelines link"
-              >
-                <ShareIcon />
-              </IconButton>
-            </Tooltip>
           </Box>
-        </Toolbar>
-      </StyledAppBar>
+        </Box>
 
-      {/* Main Content */}
-      <Box sx={{ padding: { xs: 2, sm: 3, md: 4 } }}>
         <Fade in={filteredTimelines.length > 0}>
           <Grid container spacing={3}>
             {paginatedTimelines.map((timeline, index) => (
@@ -303,7 +351,6 @@ const Timeline = () => {
                         navButtonsAlwaysVisible
                         indicators
                         sx={{ height: { xs: 120, sm: 150, md: 180 } }}
-                        aria-label={`Preview of ${timeline.name || 'Untitled'} timeline`}
                       >
                         {timeline.memories.slice(0, maxThumbnails).map((memory) => (
                           <CardMedia
@@ -311,10 +358,7 @@ const Timeline = () => {
                             component={memory.media.match(/\.(mp4|webm|ogg)$/) ? 'video' : 'img'}
                             src={memory.media}
                             controls={memory.media.match(/\.(mp4|webm|ogg)$/)}
-                            sx={{
-                              height: '100%',
-                              objectFit: 'cover',
-                            }}
+                            sx={{ height: '100%', objectFit: 'cover' }}
                             alt={memory.title || 'Timeline memory preview'}
                             onError={(e) => (e.target.src = 'https://via.placeholder.com/150?text=No+Preview')}
                           />
@@ -359,40 +403,29 @@ const Timeline = () => {
                         }}
                       >
                         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                          <Tooltip title="View Timeline Memories">
-                            <Button
-                              component={Link}
-                              to={`/timelines/${timeline._id}`}
-                              variant="outlined"
-                              color="primary"
-                              size="small"
-                              aria-label={`View memories of ${timeline.name || 'Untitled'} timeline`}
-                            >
-                              View Memories
-                            </Button>
-                          </Tooltip>
-                          <Tooltip title="Copy Shareable Link" leaveDelay={1000} disableHoverListener>
-                            <Button
-                              variant="outlined"
-                              color="info"
-                              size="small"
-                              onClick={() => {
-                                const shareUrl = `${window.location.origin}/timeline/public/${timeline._id}`;
-                                navigator.clipboard.writeText(shareUrl);
-                                toast.success('Shareable link copied to clipboard!');
-                              }}
-                              aria-label={`Copy shareable link for ${timeline.name || 'Untitled'} timeline`}
-                            >
-                              Share
-                            </Button>
-                          </Tooltip>
+                          <Button
+                            component={Link}
+                            to={`/timelines/${timeline._id}`}
+                            variant="outlined"
+                            color="primary"
+                            size="small"
+                          >
+                            View Memories
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="info"
+                            size="small"
+                            onClick={() => handleOpenShareDialog(timeline)}
+                          >
+                            Share with Friends
+                          </Button>
                         </Box>
                         <Tooltip title="Delete Timeline">
                           <IconButton
                             onClick={() => handleOpenDeleteDialog(timeline)}
                             color="error"
                             size="small"
-                            aria-label={`Delete ${timeline.name || 'Untitled'} timeline`}
                           >
                             <DeleteIcon />
                           </IconButton>
@@ -406,7 +439,6 @@ const Timeline = () => {
           </Grid>
         </Fade>
 
-        {/* Pagination */}
         {filteredTimelines.length > timelinesPerPage && (
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
             <Pagination
@@ -414,12 +446,10 @@ const Timeline = () => {
               page={page}
               onChange={(e, value) => setPage(value)}
               color="primary"
-              aria-label="Timeline pagination"
             />
           </Box>
         )}
 
-        {/* No Timelines Message */}
         {filteredTimelines.length === 0 && (
           <Typography variant="h6" sx={{ textAlign: 'center', mt: 5 }}>
             No timelines found. Create one to get started!
@@ -439,7 +469,6 @@ const Timeline = () => {
             value={newTimelineName}
             onChange={(e) => setNewTimelineName(e.target.value)}
             variant="outlined"
-            inputProps={{ 'aria-label': 'Timeline name' }}
           />
           <TextField
             margin="dense"
@@ -450,43 +479,67 @@ const Timeline = () => {
             variant="outlined"
             multiline
             rows={2}
-            inputProps={{ 'aria-label': 'Timeline description' }}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenCreateDialog(false)} color="inherit" aria-label="Cancel timeline creation">
+          <Button onClick={() => setOpenCreateDialog(false)} color="inherit">
             Cancel
           </Button>
-          <Button
-            onClick={handleCreateTimeline}
-            variant="contained"
-            color="primary"
-            aria-label="Create timeline"
-          >
+          <Button onClick={handleCreateTimeline} variant="contained" color="primary">
             Create
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={openDeleteDialog} onClose={handleCloseDeleteDialog} maxWidth="xs" fullWidth>
+      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Confirm Deletion</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete the timeline "{timelineToDelete?.name || 'Untitled'}"? This action cannot be undone.
+            Are you sure you want to delete "{timelineToDelete?.name || 'Untitled'}"? This action cannot be undone.
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDeleteDialog} color="inherit" aria-label="Cancel deletion">
+          <Button onClick={() => setOpenDeleteDialog(false)} color="inherit">
+            Cancel
+          </Button>
+          <Button onClick={handleDeleteTimeline} variant="contained" color="error">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Share with Friends Dialog */}
+      <Dialog open={openShareDialog} onClose={handleCloseShareDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Share "{timelineToShare?.name || 'Untitled'}" with Friends</DialogTitle>
+        <DialogContent>
+          {friends.length === 0 ? (
+            <Typography>No friends to share with. Add some friends first!</Typography>
+          ) : (
+            <List>
+              {friends.map((friend) => (
+                <ListItem key={friend._id} sx={{ py: 0 }}>
+                  <Checkbox
+                    checked={selectedFriends.includes(friend._id)}
+                    onChange={() => handleFriendToggle(friend._id)}
+                  />
+                  <ListItemText primary={friend.username} secondary={friend.email || 'No email'} />
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseShareDialog} color="inherit">
             Cancel
           </Button>
           <Button
-            onClick={handleDeleteTimeline}
+            onClick={handleShareWithFriends}
             variant="contained"
-            color="error"
-            aria-label="Confirm deletion"
+            color="primary"
+            disabled={friends.length === 0 || selectedFriends.length === 0}
           >
-            Delete
+            Share
           </Button>
         </DialogActions>
       </Dialog>

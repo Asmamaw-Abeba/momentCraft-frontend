@@ -1,123 +1,147 @@
 import React, { useContext } from 'react';
-import { AppBar, Toolbar, Typography, Button, IconButton, Menu, MenuItem, Box, useMediaQuery, useTheme } from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  IconButton,
+  Button,
+  Switch,
+  Box,
+  Tooltip, // Added Tooltip import
+} from '@mui/material';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import GroupIcon from '@mui/icons-material/Group';
+import LogoutIcon from '@mui/icons-material/Logout';
+import UploadIcon from '@mui/icons-material/Upload';
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import VolumeOffIcon from '@mui/icons-material/VolumeOff';
+import { styled } from '@mui/system';
 import AuthContext from '../context/AuthContext';
 
-const Header = () => {
-  const { token, logout } = useContext(AuthContext);
+// Styled Components
+const SmartAppBar = styled(AppBar)(({ theme }) => ({
+  position: 'fixed',
+  background: 'linear-gradient(135deg, rgba(107, 72, 255, 0.9), rgba(0, 221, 235, 0.9))',
+  color: 'white',
+  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+  zIndex: 10,
+}));
+
+const SmartButton = styled(Button)(({ theme }) => ({
+  margin: theme.spacing(1),
+  padding: theme.spacing(1, 3),
+  fontSize: '1.2rem',
+  borderRadius: 50,
+  backgroundColor: 'rgba(255, 255, 255, 0.9)',
+  color: '#6b48ff',
+  textTransform: 'none',
+  '&:hover': {
+    backgroundColor: 'white',
+    transform: 'scale(1.05)',
+    transition: 'transform 0.3s ease',
+  },
+}));
+
+const Header = ({ token, onExplore, onFriends, soundOn, onSoundToggle, onJoin }) => {
+  const { logout } = useContext(AuthContext);
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const [anchorEl, setAnchorEl] = React.useState(null);
-  const open = Boolean(anchorEl);
-
-  const handleMenu = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
+  // Logout handler
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
+  // Upload memory handler
+  const handleUploadMemory = () => navigate('/add-memory');
+
   return (
-    <AppBar position="static">
-      <Toolbar>
-        {/* App Logo/Branding */}
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-          <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+    <SmartAppBar>
+      <Toolbar sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* Left: Title */}
+        <Tooltip title="Go to Home" arrow>
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: 'bold',
+              color: 'white',
+              textShadow: '1px 1px 4px rgba(0, 0, 0, 0.3)',
+              cursor: 'pointer', // Indicate clickable
+            }}
+            onClick={() => navigate('/')}
+          >
             MomentCraft
-          </Link>
-        </Typography>
+          </Typography>
+        </Tooltip>
 
-        {/* Navigation Links (Desktop) */}
-        {!isMobile && (
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button color="inherit" component={Link} to="/">
-              Home
-            </Button>
-            <Button color="inherit" component={Link} to="/memories">
-              Memories
-            </Button>
-            <Button color="inherit" component={Link} to="/timelines">
-              Your Timeline
-            </Button>
-            {token ? (
-              <Button color="inherit" onClick={handleLogout}>
-                Logout
-              </Button>
-            ) : (
-              <>
-                <Button color="inherit" component={Link} to="/login">
-                  Login
-                </Button>
-                <Button color="inherit" component={Link} to="/register">
-                  Register
-                </Button>
-              </>
-            )}
-          </Box>
-        )}
-
-        {/* Mobile Menu */}
-        {isMobile && (
-          <>
-            <IconButton
-              size="large"
-              edge="start"
-              color="inherit"
-              aria-label="menu"
-              onClick={handleMenu}
-            >
-              <MenuIcon />
-            </IconButton>
-            <Menu
-              id="menu-appbar"
-              anchorEl={anchorEl}
-              anchorOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
-              keepMounted
-              transformOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
-              open={open}
-              onClose={handleClose}
-            >
-              <MenuItem onClick={handleClose} component={Link} to="/">
-                Home
-              </MenuItem>
-              <MenuItem onClick={handleClose} component={Link} to="/memories">
-                Memories
-              </MenuItem>
-              <MenuItem onClick={handleClose} component={Link} to="/timelines">
-                Your Timeline
-              </MenuItem>
-              {token ? (
-                <MenuItem onClick={handleLogout}>Logout</MenuItem>
-              ) : (
-                <>
-                  <MenuItem onClick={handleClose} component={Link} to="/login">
-                    Login
-                  </MenuItem>
-                  <MenuItem onClick={handleClose} component={Link} to="/register">
-                    Register
-                  </MenuItem>
-                </>
-              )}
-            </Menu>
-          </>
-        )}
+        {/* Right: Navigation, Logout, and Sound Toggle */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {token ? (
+            <>
+              <Tooltip title="Upload a Memory" arrow>
+                <IconButton
+                  color="inherit"
+                  onClick={handleUploadMemory}
+                  sx={{
+                    '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
+                  }}
+                >
+                  <UploadIcon sx={{ color: 'white', fontSize: 28 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Explore Memories" arrow>
+                <IconButton
+                  color="inherit"
+                  onClick={onExplore}
+                  sx={{
+                    '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
+                  }}
+                >
+                  <PlayArrowIcon sx={{ color: 'white', fontSize: 28 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Manage Friends" arrow>
+                <IconButton
+                  color="inherit"
+                  onClick={onFriends}
+                  sx={{
+                    '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
+                  }}
+                >
+                  <GroupIcon sx={{ color: 'white', fontSize: 28 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Logout" arrow>
+                <IconButton
+                  color="inherit"
+                  onClick={handleLogout}
+                  sx={{
+                    '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
+                  }}
+                >
+                  <LogoutIcon sx={{ color: 'white', fontSize: 28 }} />
+                </IconButton>
+              </Tooltip>
+            </>
+          ) : (
+            <Tooltip title="Get Started" arrow>
+              <SmartButton onClick={onJoin}>
+                Start
+              </SmartButton>
+            </Tooltip>
+          )}
+          <Tooltip title={soundOn ? "Mute Sound" : "Unmute Sound"} arrow>
+            <Switch
+              checked={soundOn}
+              onChange={onSoundToggle}
+              icon={<VolumeOffIcon sx={{ color: 'white' }} />}
+              checkedIcon={<VolumeUpIcon sx={{ color: 'white' }} />}
+            />
+          </Tooltip>
+        </Box>
       </Toolbar>
-    </AppBar>
+    </SmartAppBar>
   );
 };
 

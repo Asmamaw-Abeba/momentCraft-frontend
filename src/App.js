@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Container, ThemeProvider, createTheme } from '@mui/material'; // Import ThemeProvider and createTheme
 import Header from './components/Header';
+import Home from './components/Home';
 import MemoryForm from './components/MemoryForm';
 import MemoryList from './components/MemoryList';
 import Login from './components/Login';
@@ -12,6 +13,8 @@ import CreateTimeline from './components/CreateTimeline';
 import PublicTimelineViewer from './components/PublicTimelineViewer';
 import AddMemory from './components/AddMemory';
 import FriendsManager from './components/FriendsManager';
+import SharedTimelines from './components/SharedTimelines';
+import BestMemories from './components/BestMemories';
 import AuthContext, { AuthProvider } from './context/AuthContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -39,11 +42,11 @@ const App = () => {
       <AuthProvider>
         <Router>
           <ToastContainer />
-          <Header />
+          {/* <Header /> */}
           <Container>
             <Routes>
-              {/* Home Page */}
-              <Route
+              <Route path="/" element={<Home />} />
+              {/* <Route
                 path="/"
                 element={
                   <>
@@ -51,10 +54,10 @@ const App = () => {
                     <MemoryList refresh={refresh} />
                   </>
                 }
-              />
+              /> */}
               {/* Memories Page */}
               <Route path="/memories" element={<MemoryList refresh={refresh} />} />
-              <Route path="/add-memory/:timelineId" element={<MemoryForm refresh={refresh} />} />
+              <Route path="/add-memory" element={<MemoryForm refresh={refresh} />} />
               {/* Login Page */}
               <Route path="/login" element={<Login />} />
               {/* Register Page */}
@@ -66,6 +69,8 @@ const App = () => {
               <Route path="/add-memory/:timelineId?" element={<AddMemory />} />
               <Route path="/timeline/public/:id" element={<PublicTimelineViewer />} />
               <Route path="/friends" element={<FriendsManager />} />
+              <Route path="/shared-timelines" element={<SharedTimelines />} />
+              <Route path="/best-memories" element={<BestMemories />} />
             </Routes>
           </Container>
         </Router>

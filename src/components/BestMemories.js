@@ -84,7 +84,7 @@ const arModalStyle = {
   bgcolor: 'black',
 };
 
-const MemoryList = ({ refresh }) => {
+const BestMemories = ({ refresh }) => {
   const { token } = useContext(AuthContext);
   const navigate = useNavigate();
   const [memories, setMemories] = useState([]);
@@ -282,73 +282,7 @@ const MemoryList = ({ refresh }) => {
     }
   };
 
-  // Handle timeline selection change
-  const handleTimelineChange = (memoryId, event) => {
-    setSelectedTimeline((prev) => ({
-      ...prev,
-      [memoryId]: event.target.value,
-    }));
-  };
-
-  // Handle delete
-  const handleDelete = async (memoryId) => {
-    if (window.confirm('Are you sure you want to delete this memory?')) {
-      setLoadingDelete((prev) => ({ ...prev, [memoryId]: true }));
-      try {
-        await axios.delete(`http://localhost:5000/api/memories/${memoryId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setMemories(memories.filter((m) => m._id !== memoryId));
-        setFilteredMemories(filteredMemories.filter((m) => m._id !== memoryId));
-        toast.success('Memory deleted successfully!');
-      } catch (error) {
-        console.error('Error deleting memory:', error);
-        toast.error('Failed to delete memory');
-      } finally {
-        setLoadingDelete((prev) => ({ ...prev, [memoryId]: false }));
-      }
-    }
-  };
-
-  // Handle edit
-  const openEditModal = (memory) => {
-    setEditMemory(memory);
-    setEditTitle(memory.title || '');
-    setEditDescription(memory.description || '');
-    setEditVisibility(memory.visibility || 'private');
-    setEditMedia(null);
-  };
-
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    setLoadingEdit(true);
-    const formData = new FormData();
-    formData.append('title', editTitle);
-    formData.append('description', editDescription);
-    formData.append('visibility', editVisibility);
-    if (editMedia) formData.append('media', editMedia);
-
-    try {
-      const response = await axios.put(
-        `http://localhost:5000/api/memories/${editMemory._id}`,
-        formData,
-        { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` } }
-      );
-      const updatedMemory = response.data;
-      setMemories(memories.map((m) => (m._id === updatedMemory._id ? updatedMemory : m)));
-      setFilteredMemories(
-        filteredMemories.map((m) => (m._id === updatedMemory._id ? updatedMemory : m))
-      );
-      setEditMemory(null);
-      toast.success('Memory updated successfully!');
-    } catch (error) {
-      console.error('Error editing memory:', error);
-      toast.error('Failed to edit memory');
-    } finally {
-      setLoadingEdit(false);
-    }
-  };
-
+  
   // Handle video play
   const handlePlayVideo = (memoryId) => {
     setPlayingVideo(memoryId);
@@ -373,23 +307,7 @@ const MemoryList = ({ refresh }) => {
     );
   };
 
-  // Handle AR view
-  const handleARView = async (memory) => {
-    if (!navigator.xr) {
-      toast.error('AR is not supported on this device');
-      return;
-    }
-    const supported = await navigator.xr.isSessionSupported('immersive-ar');
-    if (!supported) {
-      toast.error('Immersive AR is not supported on this browser');
-      return;
-    }
-    if (!memory.location && !memory["3dModelUrl"]) {
-      toast.warn('Memory lacks location or 3D model for AR');
-      return;
-    }
-    setArMode(memory._id);
-  };
+  
 
   // Pagination logic
   const totalPages = Math.ceil(filteredMemories.length / memoriesPerPage);
@@ -472,22 +390,7 @@ const MemoryList = ({ refresh }) => {
             </Select>
             {selectedMemories.length > 0 && (
               <>
-                <Tooltip title="Add Selected to Timeline">
-                  <FormControl sx={{ minWidth: 120 }}>
-                    <Select
-                      value={selectedTimeline['bulk'] || ''}
-                      onChange={(e) => handleTimelineChange('bulk', e)}
-                      variant="outlined"
-                      size="small"
-                      sx={{ borderRadius: 1 }}
-                    >
-                      <MenuItem value="">Select Timeline</MenuItem>
-                      {timelines.map((timeline) => (
-                        <MenuItem key={timeline._id} value={timeline._id}>{timeline.name}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Tooltip>
+                
                 <Tooltip title="Add Selected Memories">
                   <IconButton color="primary" onClick={handleBulkAddToTimeline}>
                     <AddIcon />
@@ -631,60 +534,7 @@ const MemoryList = ({ refresh }) => {
                         <VisibilityIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5 }} />
                         {memory.visibility === 'private' ? 'Private' : memory.visibility === 'friends' ? 'Friends Only' : 'Public'}
                       </Typography>
-                      <FormControl fullWidth sx={{ mt: 2 }}>
-                        <InputLabel id={`timeline-select-label-${memory._id}`}>Add to Timeline</InputLabel>
-                        <Select
-                          labelId={`timeline-select-label-${memory._id}`}
-                          value={selectedTimeline[memory._id] || ''}
-                          label="Add to Timeline"
-                          onChange={(e) => handleTimelineChange(memory._id, e)}
-                        >
-                          <MenuItem value="">None</MenuItem>
-                          {timelines.map((timeline) => (
-                            <MenuItem key={timeline._id} value={timeline._id}>{timeline.name}</MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                      <Box sx={{ mt: 2, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <Tooltip title="Add to Selected Timeline">
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleAddToTimeline(memory._id)}
-                            sx={{ borderRadius: 20, px: 3 }}
-                          >
-                            Add
-                          </Button>
-                        </Tooltip>
-                        <Tooltip title="Edit Memory">
-                          <IconButton
-                            color="primary"
-                            onClick={() => openEditModal(memory)}
-                            disabled={loadingDelete[memory._id]}
-                          >
-                            <EditIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete Memory">
-                          <IconButton
-                            color="error"
-                            onClick={() => handleDelete(memory._id)}
-                            disabled={loadingDelete[memory._id]}
-                          >
-                            {loadingDelete[memory._id] ? <Skeleton width={24} height={24} /> : <DeleteIcon />}
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Share Memory">
-                          <IconButton color="info" onClick={() => handleShare(memory._id)}>
-                            <ShareIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="View in AR">
-                          <IconButton color="secondary" onClick={() => handleARView(memory)}>
-                            <ViewInArIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
+                    
                     </CardContent>
                   </StyledCard>
                 </Grid>
@@ -705,63 +555,6 @@ const MemoryList = ({ refresh }) => {
         )}
       </Box>
 
-      {/* Edit Modal */}
-      <Modal open={!!editMemory} onClose={() => setEditMemory(null)} closeAfterTransition>
-        <Fade in={!!editMemory}>
-          <Box sx={editModalStyle}>
-            <Typography variant="h6" sx={{ mb: 2 }}>Edit Memory</Typography>
-            <form onSubmit={handleEditSubmit}>
-              <TextField
-                label="Title"
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                fullWidth
-                sx={{ mb: 2 }}
-                disabled={loadingEdit}
-              />
-              <TextField
-                label="Description"
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                fullWidth
-                multiline
-                rows={3}
-                sx={{ mb: 2 }}
-                disabled={loadingEdit}
-              />
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <InputLabel>Visibility</InputLabel>
-                <Select
-                  value={editVisibility}
-                  onChange={(e) => setEditVisibility(e.target.value)}
-                  disabled={loadingEdit}
-                  label="Visibility"
-                >
-                  <MenuItem value="private">Private (Only Me)</MenuItem>
-                  <MenuItem value="friends">Friends Only</MenuItem>
-                  <MenuItem value="public">Public</MenuItem>
-                </Select>
-              </FormControl>
-              <TextField
-                type="file"
-                onChange={(e) => setEditMedia(e.target.files[0])}
-                fullWidth
-                sx={{ mb: 2 }}
-                inputProps={{ accept: 'image/*,video/*' }}
-                disabled={loadingEdit}
-              />
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Button type="submit" variant="contained" color="primary" disabled={loadingEdit}>
-                  {loadingEdit ? <Skeleton width={60} height={24} /> : 'Save'}
-                </Button>
-                <Button variant="outlined" onClick={() => setEditMemory(null)} disabled={loadingEdit}>
-                  Cancel
-                </Button>
-              </Box>
-            </form>
-          </Box>
-        </Fade>
-      </Modal>
 
       {/* Preview Modal */}
       <Modal open={!!previewMemory} onClose={() => setPreviewMemory(null)} closeAfterTransition>
@@ -789,44 +582,8 @@ const MemoryList = ({ refresh }) => {
           </Box>
         </Fade>
       </Modal>
-
-      {/* AR Modal */}
-      <Modal open={!!arMode} onClose={() => setArMode(null)} closeAfterTransition>
-        <Fade in={!!arMode}>
-          <Box sx={arModalStyle}>
-            <a-scene embedded arjs="sourceType: webcam;">
-              <a-asset-item
-                id="landmarkModel"
-                src={
-                  memories.find((m) => m._id === arMode)?.["3dModelUrl"] ||
-                  'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF-Binary/Duck.glb'
-                }
-              />
-              <a-entity
-                gltf-model="#landmarkModel"
-                position="0 0 -5"
-                scale="0.1 0.1 0.1"
-                rotation="0 0 0"
-                animation="property: rotation; to: 0 360 0; loop: true; dur: 5000"
-              />
-              <a-camera position="0 1.6 0" />
-            </a-scene>
-            <Typography variant="body2" sx={{ color: 'white', textAlign: 'center', mt: 2 }}>
-              Point your camera to place the model in your space!
-            </Typography>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => setArMode(null)}
-              sx={{ position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)' }}
-            >
-              Exit AR
-            </Button>
-          </Box>
-        </Fade>
-      </Modal>
     </Box>
   );
 };
 
-export default MemoryList;
+export default BestMemories;
