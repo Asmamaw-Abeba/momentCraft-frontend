@@ -18,14 +18,21 @@ export const createTimeLine = (data, token) => {
   return response?.data;
 };
 
-export const createMemory = (formData, onUploadProgress, token) =>
-  API.post('/', formData, {
-    headers: { 
-      'Content-Type': 'multipart/form-data',
-       Authorization: `Bearer ${token}`,  
-     },
-    onUploadProgress: (progressEvent) => {
-      const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-      onUploadProgress(percentCompleted);
-    },
-  });
+// export const createMemory = (formData, onUploadProgress, token) =>
+//   API.post('/', formData, {
+//    // api.js
+export const createMemory = async (formData, onUploadProgress, token) => {
+  try {
+    const response = await API.post('/', formData, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        onUploadProgress(percentCompleted);
+      },
+    });
+    return response; // Ensure this includes media or _id
+  } catch (error) {
+    console.error('API Error:', error);
+    throw error; // Let frontend handle partial success
+  }
+};

@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AppBar,
@@ -8,7 +8,7 @@ import {
   Button,
   Switch,
   Box,
-  Tooltip, // Added Tooltip import
+  Tooltip,
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import GroupIcon from '@mui/icons-material/Group';
@@ -31,7 +31,7 @@ const SmartAppBar = styled(AppBar)(({ theme }) => ({
 const SmartButton = styled(Button)(({ theme }) => ({
   margin: theme.spacing(1),
   padding: theme.spacing(1, 3),
-  fontSize: '1.2rem',
+  fontSize: { xs: '1rem', sm: '1.2rem' },
   borderRadius: 50,
   backgroundColor: 'rgba(255, 255, 255, 0.9)',
   color: '#6b48ff',
@@ -43,22 +43,76 @@ const SmartButton = styled(Button)(({ theme }) => ({
   },
 }));
 
-const Header = ({ token, onExplore, onFriends, soundOn, onSoundToggle, onJoin }) => {
-  const { logout } = useContext(AuthContext);
+const Header = ({
+  token: externalToken,
+  onExplore: externalOnExplore,
+  onFriends: externalOnFriends,
+  soundOn: externalSoundOn,
+  onSoundToggle: externalOnSoundToggle,
+  onJoin: externalOnJoin,
+}) => {
+  const { token: contextToken, logout } = useContext(AuthContext);
   const navigate = useNavigate();
+  const [localSoundOn, setLocalSoundOn] = useState(false);
 
-  // Logout handler
+  // Use external token if provided, otherwise fall back to context token
+  const effectiveToken = externalToken !== undefined ? externalToken : contextToken;
+
+  // Sound toggle handler
+  const handleSoundToggle = () => {
+    if (externalOnSoundToggle) {
+      externalOnSoundToggle();
+    } else {
+      setLocalSoundOn((prev) => !prev);
+    }
+  };
+
+  // Effective sound state (external or local)
+  const soundOn = externalSoundOn !== undefined ? externalSoundOn : localSoundOn;
+
+  // Navigation handlers with defaults
+  const handleExplore = () => {
+    if (externalOnExplore) {
+      externalOnExplore();
+    } else {
+      navigate('/memories');
+    }
+  };
+
+  const handleFriends = () => {
+    if (externalOnFriends) {
+      externalOnFriends();
+    } else {
+      navigate('/friends');
+    }
+  };
+
+  const handleJoin = () => {
+    if (externalOnJoin) {
+      externalOnJoin();
+    } else {
+      navigate('/register');
+    }
+  };
+
   const handleLogout = () => {
-    logout();
+    if (logout) {
+      logout();
+    }
     navigate('/login');
   };
 
-  // Upload memory handler
-  const handleUploadMemory = () => navigate('/add-memory');
+  const handleUploadMemory = () => {
+    navigate('/add-memory');
+  };
+
+  const handleHome = () => {
+    navigate('/');
+  };
 
   return (
     <SmartAppBar>
-      <Toolbar sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+      <Toolbar sx={{ justifyContent: 'space-between', alignItems: 'center', flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
         {/* Left: Title */}
         <Tooltip title="Go to Home" arrow>
           <Typography
@@ -67,17 +121,18 @@ const Header = ({ token, onExplore, onFriends, soundOn, onSoundToggle, onJoin })
               fontWeight: 'bold',
               color: 'white',
               textShadow: '1px 1px 4px rgba(0, 0, 0, 0.3)',
-              cursor: 'pointer', // Indicate clickable
+              cursor: 'pointer',
+              fontSize: { xs: '1.2rem', sm: '1.5rem', md: '1.75rem' },
             }}
-            onClick={() => navigate('/')}
+            onClick={handleHome}
           >
             MomentCraft
           </Typography>
         </Tooltip>
 
         {/* Right: Navigation, Logout, and Sound Toggle */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {token ? (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 }, flexWrap: 'wrap' }}>
+          {effectiveToken ? (
             <>
               <Tooltip title="Upload a Memory" arrow>
                 <IconButton
@@ -87,29 +142,29 @@ const Header = ({ token, onExplore, onFriends, soundOn, onSoundToggle, onJoin })
                     '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
                   }}
                 >
-                  <UploadIcon sx={{ color: 'white', fontSize: 28 }} />
+                  <UploadIcon sx={{ color: 'white', fontSize: { xs: 24, sm: 28 } }} />
                 </IconButton>
               </Tooltip>
               <Tooltip title="Explore Memories" arrow>
                 <IconButton
                   color="inherit"
-                  onClick={onExplore}
+                  onClick={handleExplore}
                   sx={{
                     '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
                   }}
                 >
-                  <PlayArrowIcon sx={{ color: 'white', fontSize: 28 }} />
+                  <PlayArrowIcon sx={{ color: 'white', fontSize: { xs: 24, sm: 28 } }} />
                 </IconButton>
               </Tooltip>
               <Tooltip title="Manage Friends" arrow>
                 <IconButton
                   color="inherit"
-                  onClick={onFriends}
+                  onClick={handleFriends}
                   sx={{
                     '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
                   }}
                 >
-                  <GroupIcon sx={{ color: 'white', fontSize: 28 }} />
+                  <GroupIcon sx={{ color: 'white', fontSize: { xs: 24, sm: 28 } }} />
                 </IconButton>
               </Tooltip>
               <Tooltip title="Logout" arrow>
@@ -120,23 +175,24 @@ const Header = ({ token, onExplore, onFriends, soundOn, onSoundToggle, onJoin })
                     '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
                   }}
                 >
-                  <LogoutIcon sx={{ color: 'white', fontSize: 28 }} />
+                  <LogoutIcon sx={{ color: 'white', fontSize: { xs: 24, sm: 28 } }} />
                 </IconButton>
               </Tooltip>
             </>
           ) : (
             <Tooltip title="Get Started" arrow>
-              <SmartButton onClick={onJoin}>
+              <SmartButton onClick={handleJoin}>
                 Start
               </SmartButton>
             </Tooltip>
           )}
-          <Tooltip title={soundOn ? "Mute Sound" : "Unmute Sound"} arrow>
+          <Tooltip title={soundOn ? 'Mute Sound' : 'Unmute Sound'} arrow>
             <Switch
               checked={soundOn}
-              onChange={onSoundToggle}
+              onChange={handleSoundToggle}
               icon={<VolumeOffIcon sx={{ color: 'white' }} />}
               checkedIcon={<VolumeUpIcon sx={{ color: 'white' }} />}
+              sx={{ ml: { xs: 0, sm: 1 } }}
             />
           </Tooltip>
         </Box>

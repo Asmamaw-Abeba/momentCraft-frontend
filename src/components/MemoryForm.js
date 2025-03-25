@@ -16,22 +16,26 @@ import {
   CircularProgress,
   Tooltip,
   IconButton,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { styled } from '@mui/system';
 import CancelIcon from '@mui/icons-material/Cancel';
 import AuthContext from '../context/AuthContext';
-import Header from './Header'; // Import Header component
+import Header from './Header';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+
 // Styled Components
 const StyledBox = styled(Box)(({ theme }) => ({
-  maxWidth: 600,
+  maxWidth: { xs: '100%', sm: 600 }, // Responsive width
   margin: 'auto',
-  padding: theme.spacing(3),
+  padding: theme.spacing(2, 3),
   backgroundColor: '#fff',
   borderRadius: 12,
   boxShadow: theme.shadows[4],
-  mt: 8, // Adjusted for Header
+  mt: { xs: 6, sm: 8 }, // Adjusted for Header, responsive
+  overflow: 'hidden',
 }));
 
 const DropZone = styled(Box)(({ theme, isDragging }) => ({
@@ -45,6 +49,7 @@ const DropZone = styled(Box)(({ theme, isDragging }) => ({
   '&:hover': {
     backgroundColor: '#f5f5f5',
   },
+  minHeight: 120, // Consistent height
 }));
 
 const StyledButton = styled(Button)(({ theme }) => ({
@@ -57,20 +62,22 @@ const StyledButton = styled(Button)(({ theme }) => ({
   },
 }));
 
-const MemoryForm = ({ onMemoryCreated }) => {
+const MemoryForm = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [file, setFile] = useState(null);
-  const [visibility, setVisibility] = useState('private'); // New visibility state
+  const [visibility, setVisibility] = useState('private');
   const [error, setError] = useState('');
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [isDragging, setIsDragging] = useState(false); // For drag-and-drop
-  const [previewUrl, setPreviewUrl] = useState(null); // For file preview
-  const [soundOn, setSoundOn] = useState(false); // For Header
+  const [isDragging, setIsDragging] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [soundOn, setSoundOn] = useState(false);
   const { token } = useContext(AuthContext);
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // Detect mobile screens
 
   // Navigation handlers for Header
   const handleSoundToggle = () => setSoundOn((prev) => !prev);
@@ -97,7 +104,7 @@ const MemoryForm = ({ onMemoryCreated }) => {
     }
 
     setFile(selectedFile);
-    setPreviewUrl(URL.createObjectURL(selectedFile)); // Generate preview
+    setPreviewUrl(URL.createObjectURL(selectedFile));
     setError('');
   }, []);
 
@@ -116,7 +123,7 @@ const MemoryForm = ({ onMemoryCreated }) => {
     handleFileChange(droppedFile);
   };
 
-  // Form submission
+  // Form submission with improved error handling
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -135,23 +142,36 @@ const MemoryForm = ({ onMemoryCreated }) => {
     formData.append('title', title);
     formData.append('description', description);
     formData.append('media', file);
-    formData.append('visibility', visibility); // Add visibility to form data
+    formData.append('visibility', visibility);
 
     try {
       setIsLoading(true);
-      await createMemory(formData, (progress) => setUploadProgress(progress), token);
-      setTitle('');
-      setDescription('');
-      setFile(null);
-      setPreviewUrl(null);
-      setVisibility('private');
-      setUploadProgress(0);
-      onMemoryCreated();
-      toast.success('Memory created successfully!'); // Replace alert with toast
-      navigate('/memories');
+      const response = await createMemory(formData, (progress) => setUploadProgress(progress), token);
+      
+      // Check if memory was created (e.g., response contains media URL or ID)
+      if (response?.data?.media || response?.data?._id) {
+        setTitle('');
+        setDescription('');
+        setFile(null);
+        setPreviewUrl(null);
+        setVisibility('private');
+        setUploadProgress(0);
+        // onMemoryCreated();
+        toast.success('Memory created successfully!');
+        navigate('/memories');
+      } else {
+        throw new Error('No memory data returned');
+      }
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create memory');
-      setOpenSnackbar(true);
+      console.error('Error in handleSubmit:', err);
+      // Handle specific cases where memory is created but another process (e.g., Hugging Face) fails
+      if (err.response?.data?.media || err.response?.data?._id) {
+        toast.success('Memory created, but caption generation failed.');
+        navigate('/memories');
+      } else {
+        setError(err.response?.data?.error || 'Failed to create memory');
+        setOpenSnackbar(true);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -180,7 +200,7 @@ const MemoryForm = ({ onMemoryCreated }) => {
         onJoin={handleJoinNow}
       />
       <StyledBox>
-        <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: '#333' }}>
+        <Typography variant={isMobile ? 'h6' : 'h5'} gutterBottom sx={{ fontWeight: 'bold', color: '#333', textAlign: 'center' }}>
           Create a Memory
         </Typography>
         <form onSubmit={handleSubmit}>
@@ -193,8 +213,10 @@ const MemoryForm = ({ onMemoryCreated }) => {
             required
             variant="outlined"
             error={title.length > 50}
-            helperText={title.length > 50 ? 'Title must be 50 characters or less' : ''}
+            helperText={title.length > 50 ? 'Title must be 50 characters or less' : `${title.length}/50`}
             inputProps={{ maxLength: 50 }}
+            size={isMobile ? 'small' : 'medium'} // Smaller input on mobile
+            aria-label="Memory title"
           />
           <TextField
             fullWidth
@@ -203,8 +225,10 @@ const MemoryForm = ({ onMemoryCreated }) => {
             onChange={(e) => setDescription(e.target.value)}
             margin="normal"
             multiline
-            rows={4}
+            rows={isMobile ? 3 : 4} // Fewer rows on mobile
             variant="outlined"
+            size={isMobile ? 'small' : 'medium'}
+            aria-label="Memory description"
           />
           <FormControl fullWidth margin="normal">
             <InputLabel>Visibility</InputLabel>
@@ -212,6 +236,7 @@ const MemoryForm = ({ onMemoryCreated }) => {
               value={visibility}
               onChange={(e) => setVisibility(e.target.value)}
               label="Visibility"
+              size={isMobile ? 'small' : 'medium'}
             >
               <MenuItem value="private">Private (Only Me)</MenuItem>
               <MenuItem value="friends">Friends Only</MenuItem>
@@ -228,7 +253,7 @@ const MemoryForm = ({ onMemoryCreated }) => {
             onClick={() => document.getElementById('file-input').click()}
           >
             {previewUrl ? (
-              <Box sx={{ position: 'relative', maxHeight: 200, overflow: 'hidden' }}>
+              <Box sx={{ position: 'relative', maxHeight: isMobile ? 150 : 200, overflow: 'hidden' }}>
                 {file.type.startsWith('video/') ? (
                   <video
                     src={previewUrl}
@@ -256,7 +281,7 @@ const MemoryForm = ({ onMemoryCreated }) => {
                 </Tooltip>
               </Box>
             ) : (
-              <Typography color={isDragging ? 'primary' : 'textSecondary'}>
+              <Typography color={isDragging ? 'primary' : 'textSecondary'} variant={isMobile ? 'body2' : 'body1'}>
                 {isDragging ? 'Drop file here!' : 'Drag & drop or click to upload a file'}
               </Typography>
             )}
@@ -268,17 +293,21 @@ const MemoryForm = ({ onMemoryCreated }) => {
               accept="image/jpeg,image/png,image/gif,video/mp4,video/webm,video/ogg"
             />
           </DropZone>
+          <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
+            Supported: JPEG, PNG, GIF, MP4, WebM, Ogg (max 50MB)
+          </Typography>
 
           {uploadProgress > 0 && (
             <LinearProgress variant="determinate" value={uploadProgress} sx={{ mt: 2, mb: 2 }} />
           )}
 
-          <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+          <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'flex-end', flexDirection: { xs: 'column', sm: 'row' } }}>
             <StyledButton
               variant="outlined"
               color="secondary"
               onClick={handleCancel}
               disabled={isLoading}
+              fullWidth={isMobile}
             >
               Cancel
             </StyledButton>
@@ -287,6 +316,7 @@ const MemoryForm = ({ onMemoryCreated }) => {
               variant="contained"
               color="primary"
               disabled={isLoading || !title.trim() || !file}
+              fullWidth={isMobile}
             >
               {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Upload Memory'}
             </StyledButton>
@@ -303,6 +333,7 @@ const MemoryForm = ({ onMemoryCreated }) => {
             {error}
           </Alert>
         </Snackbar>
+        <ToastContainer position="top-right" autoClose={3000} />
       </StyledBox>
     </Box>
   );

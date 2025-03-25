@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom'; // Added for navigation
+import { useNavigate } from 'react-router-dom';
 import { fetchMemories } from '../api';
 import {
   Card,
@@ -17,11 +17,13 @@ import {
   InputAdornment,
   Fade,
   Modal,
-  Backdrop,
   Skeleton,
   IconButton,
   Tooltip,
   Checkbox,
+  Avatar,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { styled } from '@mui/system';
 import axios from 'axios';
@@ -29,16 +31,13 @@ import { Link } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import SearchIcon from '@mui/icons-material/Search';
 import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import ShareIcon from '@mui/icons-material/Share';
 import AddIcon from '@mui/icons-material/Add';
-import ViewInArIcon from '@mui/icons-material/ViewInAr';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import 'aframe';
-import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import Header from './Header'; // Import the Header component
+import { ToastContainer, toast } from 'react-toastify';
+import Header from './Header';
 
 // Styled Card with hover effect
 const StyledCard = styled(Card)(({ theme }) => ({
@@ -49,21 +48,11 @@ const StyledCard = styled(Card)(({ theme }) => ({
   },
   borderRadius: 12,
   overflow: 'hidden',
+  display: 'flex',
+  flexDirection: 'column', // Ensure content stacks properly
 }));
 
 // Modal styles
-const editModalStyle = {
-  position: 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: 400,
-  bgcolor: 'background.paper',
-  boxShadow: 24,
-  p: 4,
-  borderRadius: 8,
-};
-
 const previewModalStyle = {
   position: 'absolute',
   top: '50%',
@@ -78,15 +67,11 @@ const previewModalStyle = {
   overflow: 'auto',
 };
 
-const arModalStyle = {
-  width: '100vw',
-  height: '100vh',
-  bgcolor: 'black',
-};
-
 const BestMemories = ({ refresh }) => {
   const { token } = useContext(AuthContext);
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // Detect mobile screens
   const [memories, setMemories] = useState([]);
   const [filteredMemories, setFilteredMemories] = useState([]);
   const [timelines, setTimelines] = useState([]);
@@ -95,19 +80,11 @@ const BestMemories = ({ refresh }) => {
   const [sortBy, setSortBy] = useState('default');
   const [filterTimeline, setFilterTimeline] = useState('');
   const [page, setPage] = useState(1);
-  const [editMemory, setEditMemory] = useState(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editMedia, setEditMedia] = useState(null);
-  const [editVisibility, setEditVisibility] = useState('private');
-  const [loadingDelete, setLoadingDelete] = useState({});
-  const [loadingEdit, setLoadingEdit] = useState(false);
-  const [playingVideo, setPlayingVideo] = useState(null);
   const [previewMemory, setPreviewMemory] = useState(null);
   const [selectedMemories, setSelectedMemories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [arMode, setArMode] = useState(null);
-  const [soundOn, setSoundOn] = useState(false); // Added for sound toggle
+  const [playingVideo, setPlayingVideo] = useState(null);
+  const [soundOn, setSoundOn] = useState(false);
   const memoriesPerPage = 6;
 
   // Navigation handlers
@@ -116,7 +93,7 @@ const BestMemories = ({ refresh }) => {
   const handleManageFriends = () => navigate('/friends');
   const handleJoinNow = () => navigate('/register');
 
-  // Fetch memories
+  // Fetch memories with user info
   useEffect(() => {
     const getMemories = async () => {
       try {
@@ -147,7 +124,7 @@ const BestMemories = ({ refresh }) => {
         toast.error('Failed to fetch timelines');
       }
     };
-    getTimelines();
+    if (token) getTimelines();
   }, [token]);
 
   // Filter and sort memories
@@ -157,7 +134,8 @@ const BestMemories = ({ refresh }) => {
       result = result.filter(
         (memory) =>
           (memory.title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-          (memory.description?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+          (memory.description?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+          (memory.user?.username?.toLowerCase() || '').includes(searchQuery.toLowerCase()) // Search by username
       );
     }
     if (filterTimeline) {
@@ -183,23 +161,24 @@ const BestMemories = ({ refresh }) => {
     return videoExtensions.some((ext) => filename.toLowerCase().endsWith(ext));
   };
 
-  // Extract public_id from video URL
-  const getPublicId = (videoUrl) => {
-    const urlWithoutQuery = videoUrl.split('?')[0];
-    const uploadIndex = urlWithoutQuery.indexOf('/upload/');
-    if (uploadIndex === -1) return null;
-    const afterUpload = urlWithoutQuery.substring(uploadIndex + 8);
-    const lastDotIndex = afterUpload.lastIndexOf('.');
-    if (lastDotIndex === -1) return afterUpload;
-    return afterUpload.substring(0, lastDotIndex);
-  };
+ // Extract public_id from video URL
+ const getPublicId = (videoUrl) => {
+  const urlWithoutQuery = videoUrl.split('?')[0];
+  const uploadIndex = urlWithoutQuery.indexOf('/upload/');
+  if (uploadIndex === -1) return null;
+  const afterUpload = urlWithoutQuery.substring(uploadIndex + 8);
+  const lastDotIndex = afterUpload.lastIndexOf('.');
+  if (lastDotIndex === -1) return afterUpload;
+  return afterUpload.substring(0, lastDotIndex);
+};
 
-  // Generate thumbnail URL from video URL
-  const getThumbnailUrl = (videoUrl) => {
-    const publicId = getPublicId(videoUrl);
-    if (!publicId) return null;
-    return `https://res.cloudinary.com/${process.env.REACT_APP_CLOUDINARY_CLOUD_NAME}/video/upload/w_300,h_300,c_fill,so_1,f_jpg/${publicId}.jpg`;
-  };
+// Generate thumbnail URL from video URL
+const getThumbnailUrl = (videoUrl) => {
+  const publicId = getPublicId(videoUrl);
+  if (!publicId) return null;
+  return `https://res.cloudinary.com/${process.env.REACT_APP_CLOUDINARY_CLOUD_NAME}/video/upload/w_300,h_300,c_fill,so_1,f_jpg/${publicId}.jpg`;
+};
+
 
   // Handle adding a memory to a timeline
   const handleAddToTimeline = async (memoryId) => {
@@ -282,7 +261,6 @@ const BestMemories = ({ refresh }) => {
     }
   };
 
-  
   // Handle video play
   const handlePlayVideo = (memoryId) => {
     setPlayingVideo(memoryId);
@@ -307,8 +285,6 @@ const BestMemories = ({ refresh }) => {
     );
   };
 
-  
-
   // Pagination logic
   const totalPages = Math.ceil(filteredMemories.length / memoriesPerPage);
   const paginatedMemories = filteredMemories.slice(
@@ -319,7 +295,15 @@ const BestMemories = ({ refresh }) => {
   if (loading) {
     return (
       <Box sx={{ padding: { xs: 2, sm: 3 }, bgcolor: '#f5f5f5', minHeight: '100vh' }}>
-        <Grid container spacing={3}>
+        <Header
+          token={token}
+          onExplore={handleExploreMemories}
+          onFriends={handleManageFriends}
+          soundOn={soundOn}
+          onSoundToggle={handleSoundToggle}
+          onJoin={handleJoinNow}
+        />
+        <Grid container spacing={isMobile ? 2 : 3} sx={{ mt: { xs: 6, sm: 8 } }}>
           {[...Array(6)].map((_, index) => (
             <Grid item xs={12} sm={6} md={4} key={index}>
               <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 12 }} />
@@ -336,8 +320,6 @@ const BestMemories = ({ refresh }) => {
   return (
     <Box sx={{ bgcolor: '#f5f5f5', minHeight: '100vh' }}>
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
-      
-      {/* Header */}
       <Header
         token={token}
         onExplore={handleExploreMemories}
@@ -346,30 +328,29 @@ const BestMemories = ({ refresh }) => {
         onSoundToggle={handleSoundToggle}
         onJoin={handleJoinNow}
       />
-
-      {/* Main Content with Adjusted Margin */}
-      <Box sx={{ padding: { xs: 2, sm: 3 }, mt: 8 }}>
+      <Box sx={{ padding: { xs: 2, sm: 3 }, mt: { xs: 6, sm: 8 } }}>
         {/* Search, Sort, and Filter Controls */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, mb: 3, gap: 2 }}>
+          <Typography variant={isMobile ? 'h6' : 'h5'} sx={{ fontWeight: 'bold' }}>
             Your Memories
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: { xs: 'center', sm: 'flex-end' } }}>
             <TextField
               label="Search Memories"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               variant="outlined"
               size="small"
-              sx={{ width: { xs: '150px', sm: '200px' }, borderRadius: 1 }}
+              sx={{ width: { xs: '100%', sm: 200 }, borderRadius: 1 }}
               InputProps={{ endAdornment: <InputAdornment position="end"><SearchIcon /></InputAdornment> }}
+              aria-label="Search memories"
             />
             <Select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               variant="outlined"
               size="small"
-              sx={{ minWidth: 120, borderRadius: 1 }}
+              sx={{ width: { xs: '100%', sm: 120 }, borderRadius: 1 }}
             >
               <MenuItem value="default">Default</MenuItem>
               <MenuItem value="title">Title</MenuItem>
@@ -381,7 +362,7 @@ const BestMemories = ({ refresh }) => {
               onChange={(e) => setFilterTimeline(e.target.value)}
               variant="outlined"
               size="small"
-              sx={{ minWidth: 120, borderRadius: 1 }}
+              sx={{ width: { xs: '100%', sm: 120 }, borderRadius: 1 }}
             >
               <MenuItem value="">All Timelines</MenuItem>
               {timelines.map((timeline) => (
@@ -389,8 +370,7 @@ const BestMemories = ({ refresh }) => {
               ))}
             </Select>
             {selectedMemories.length > 0 && (
-              <>
-                
+              <Box sx={{ display: 'flex', gap: 1 }}>
                 <Tooltip title="Add Selected Memories">
                   <IconButton color="primary" onClick={handleBulkAddToTimeline}>
                     <AddIcon />
@@ -401,14 +381,14 @@ const BestMemories = ({ refresh }) => {
                     <DeleteIcon />
                   </IconButton>
                 </Tooltip>
-              </>
+              </Box>
             )}
           </Box>
         </Box>
 
         <Fade in={!loading}>
           <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <Typography variant="body1" color="textSecondary" sx={{ mt: 1 }}>
+            <Typography variant="body1" color="textSecondary">
               Browse and organize your cherished moments
             </Typography>
           </Box>
@@ -425,12 +405,12 @@ const BestMemories = ({ refresh }) => {
           </Box>
         ) : (
           <>
-            <Grid container spacing={3}>
+            <Grid container spacing={isMobile ? 2 : 3}>
               {paginatedMemories.map((memory) => (
                 <Grid item key={memory._id} xs={12} sm={6} md={4}>
                   <StyledCard>
-                    <Box sx={{ position: 'relative' }}>
-                      {memory.media && (
+                    <Box sx={{ position: 'relative', flexShrink: 0 }}>
+                    {memory.media && (
                         isVideo(memory.media) ? (
                           playingVideo === memory._id ? (
                             <Box sx={{ position: 'relative', paddingTop: '56.25%' }}>
@@ -513,11 +493,28 @@ const BestMemories = ({ refresh }) => {
                         sx={{ position: 'absolute', top: 8, left: 8 }}
                       />
                     </Box>
-                    <CardContent>
-                      <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
+                    <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Avatar
+                          sx={{ width: 24, height: 24, bgcolor: '#1976d2' }}
+                          alt={memory.user?.username || 'Unknown'}
+                          src={memory.user?.avatar}
+                        >
+                          {memory.user?.username?.[0]?.toUpperCase() || 'U'}
+                        </Avatar>
+                        <Typography
+                          variant="body2"
+                          component={Link}
+                          to={`/profile/${memory.user?._id}`}
+                          sx={{ color: '#1976d2', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                        >
+                          {memory.user?.username || 'Unknown User'}
+                        </Typography>
+                      </Box>
+                      <Typography variant={isMobile ? 'body1' : 'h6'} sx={{ fontWeight: 'medium' }}>
                         {memory.title || 'Untitled'}
                       </Typography>
-                      <Typography variant="body2" color="textSecondary">
+                      <Typography variant="body2" color="textSecondary" sx={{ flexGrow: 1 }}>
                         {memory.description || 'No description'}
                       </Typography>
                       {!isVideo(memory.media) && (
@@ -534,7 +531,6 @@ const BestMemories = ({ refresh }) => {
                         <VisibilityIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5 }} />
                         {memory.visibility === 'private' ? 'Private' : memory.visibility === 'friends' ? 'Friends Only' : 'Public'}
                       </Typography>
-                    
                     </CardContent>
                   </StyledCard>
                 </Grid>
@@ -547,14 +543,13 @@ const BestMemories = ({ refresh }) => {
                   page={page}
                   onChange={(e, value) => setPage(value)}
                   color="primary"
-                  size="large"
+                  size={isMobile ? 'small' : 'large'}
                 />
               </Box>
             )}
           </>
         )}
       </Box>
-
 
       {/* Preview Modal */}
       <Modal open={!!previewMemory} onClose={() => setPreviewMemory(null)} closeAfterTransition>
@@ -572,10 +567,10 @@ const BestMemories = ({ refresh }) => {
                 </video>
               ) : (
                 <img
-                  src={previewMemory.media}
+                  src={previewMemory.media || 'https://via.placeholder.com/300'}
                   alt={previewMemory.title}
                   style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }}
-                  onError={(e) => console.error('Preview image failed to load:', e)}
+                  onError={(e) => (e.target.src = 'https://via.placeholder.com/300')}
                 />
               )
             )}

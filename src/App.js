@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Container, ThemeProvider, createTheme } from '@mui/material'; // Import ThemeProvider and createTheme
 import Header from './components/Header';
+import Footer from './components/Footer';
 import Home from './components/Home';
 import MemoryForm from './components/MemoryForm';
 import MemoryList from './components/MemoryList';
@@ -15,6 +16,7 @@ import AddMemory from './components/AddMemory';
 import FriendsManager from './components/FriendsManager';
 import SharedTimelines from './components/SharedTimelines';
 import BestMemories from './components/BestMemories';
+import FriendProfile from './components/FriendProfile';
 import AuthContext, { AuthProvider } from './context/AuthContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -42,7 +44,7 @@ const App = () => {
       <AuthProvider>
         <Router>
           <ToastContainer />
-          {/* <Header /> */}
+          <Header />
           <Container>
             <Routes>
               <Route path="/" element={<Home />} />
@@ -71,8 +73,10 @@ const App = () => {
               <Route path="/friends" element={<FriendsManager />} />
               <Route path="/shared-timelines" element={<SharedTimelines />} />
               <Route path="/best-memories" element={<BestMemories />} />
+              <Route path="/profile/:friendId" element={<FriendProfile />} />
             </Routes>
           </Container>
+          <Footer />
         </Router>
       </AuthProvider>
     </ThemeProvider>

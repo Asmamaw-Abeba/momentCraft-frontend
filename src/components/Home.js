@@ -102,7 +102,7 @@ const Home = () => {
   }, []);
 
   const handleSoundToggle = () => setSoundOn((prev) => !prev);
-  const handleExploreMemories = () => navigate('/memories');
+  const handleExploreMemories = () => navigate('/best-memories');
   const handleManageFriends = () => navigate('/friends');
   const handleJoinNow = () => navigate('/register');
   const handleUploadMemory = () => navigate('/add-memory');
@@ -177,9 +177,11 @@ const Home = () => {
                     <ActionButton startIcon={<GroupIcon />} onClick={handleManageFriends}>
                       Connect
                     </ActionButton>
-                    <ActionButton startIcon={<UploadIcon />} onClick={handleUploadMemory}>
-                      Upload memory
-                    </ActionButton>
+                    {token && (
+                      <ActionButton startIcon={<UploadIcon />} onClick={handleUploadMemory}>
+                        Upload memory
+                      </ActionButton>
+                    )}
                     {!token && (
                       <ActionButton startIcon={<VideoCameraFrontIcon />} onClick={handleJoinNow}>
                         Create
@@ -195,7 +197,7 @@ const Home = () => {
 
       <Box sx={{ py: 1, textAlign: 'center', bgcolor: 'rgba(0, 0, 0, 0.1)', zIndex: 5 }}>
         <Typography variant="caption" sx={{ color: 'white' }}>
-          © 2025 MomentCraft
+          © 2025 MomentCraft by Asmamaw
         </Typography>
       </Box>
     </Box>

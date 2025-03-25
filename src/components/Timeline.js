@@ -25,19 +25,24 @@ import {
   ListItem,
   ListItemText,
   Checkbox,
+  Avatar,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
-import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Add as AddIcon, Delete as DeleteIcon, Link as LinkIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { styled } from '@mui/system';
 import Carousel from 'react-material-ui-carousel';
 import AuthContext from '../context/AuthContext';
-import Header from './Header'; // Import the Header component
+import Header from './Header';
 
 const StyledCard = styled(Card)(({ theme }) => ({
   transition: 'transform 0.3s, box-shadow 0.3s',
   '&:hover': { transform: 'scale(1.03)', boxShadow: theme.shadows[6] },
   borderRadius: 12,
   overflow: 'hidden',
+  display: 'flex',
+  flexDirection: 'column',
 }));
 
 const Timeline = () => {
@@ -58,10 +63,12 @@ const Timeline = () => {
   const [sortBy, setSortBy] = useState('name');
   const [page, setPage] = useState(1);
   const [maxThumbnails, setMaxThumbnails] = useState(3);
-  const [soundOn, setSoundOn] = useState(false); // For Header sound toggle
+  const [soundOn, setSoundOn] = useState(false);
   const timelinesPerPage = 6;
   const { token } = useContext(AuthContext);
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // Navigation handlers for Header
   const handleSoundToggle = () => setSoundOn((prev) => !prev);
@@ -103,7 +110,7 @@ const Timeline = () => {
       fetchTimelines();
       fetchFriends();
     } else {
-      setLoading(false); // No token, no fetch
+      setLoading(false);
     }
   }, [fetchTimelines, fetchFriends, token]);
 
@@ -111,8 +118,10 @@ const Timeline = () => {
   const handleSearchAndSort = useCallback(() => {
     let result = [...timelines];
     if (searchQuery) {
-      result = result.filter((timeline) =>
-        timeline.name.toLowerCase().includes(searchQuery.toLowerCase())
+      result = result.filter(
+        (timeline) =>
+          timeline.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          timeline.user?.username?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
     if (sortBy === 'name') {
@@ -189,6 +198,12 @@ const Timeline = () => {
     }
   };
 
+  const handleCopyLink = (timelineId) => {
+    const shareUrl = `${window.location.origin}/timeline/public/${timelineId}`;
+    navigator.clipboard.writeText(shareUrl);
+    toast.success('Timeline link copied to clipboard!');
+  };
+
   const handleOpenDeleteDialog = (timeline) => {
     setTimelineToDelete(timeline);
     setOpenDeleteDialog(true);
@@ -198,12 +213,6 @@ const Timeline = () => {
     setTimelineToShare(timeline);
     setSelectedFriends([]);
     setOpenShareDialog(true);
-  };
-
-  const handleCloseShareDialog = () => {
-    setOpenShareDialog(false);
-    setTimelineToShare(null);
-    setSelectedFriends([]);
   };
 
   const handleFriendToggle = (friendId) => {
@@ -247,8 +256,8 @@ const Timeline = () => {
           onSoundToggle={handleSoundToggle}
           onJoin={handleJoinNow}
         />
-        <Box sx={{ padding: { xs: 2, sm: 3, md: 4 }, mt: 8 }}>
-          <Grid container spacing={3}>
+        <Box sx={{ padding: { xs: 2, sm: 3 }, mt: { xs: 6, sm: 8 } }}>
+          <Grid container spacing={isMobile ? 2 : 3}>
             {[...Array(6)].map((_, index) => (
               <Grid item xs={12} sm={6} md={4} key={index}>
                 <Skeleton variant="rectangular" height={180} sx={{ borderRadius: 12 }} />
@@ -294,26 +303,27 @@ const Timeline = () => {
         onSoundToggle={handleSoundToggle}
         onJoin={handleJoinNow}
       />
-      <Box sx={{ padding: { xs: 2, sm: 3, md: 4 }, mt: 8 }}>
+      <Box sx={{ padding: { xs: 2, sm: 3 }, mt: { xs: 6, sm: 8 } }}>
         {/* Search, Sort, and Create Controls */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, mb: 3, gap: 2 }}>
+          <Typography variant={isMobile ? 'h6' : 'h5'} sx={{ fontWeight: 'bold' }}>
             Timelines
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: { xs: 'center', sm: 'flex-end' } }}>
             <TextField
               label="Search Timelines"
               variant="outlined"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              sx={{ width: { xs: '150px', sm: '200px' }, borderRadius: 1 }}
+              sx={{ width: { xs: '100%', sm: 200 }, borderRadius: 1 }}
               size="small"
+              aria-label="Search timelines"
             />
             <Select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               variant="outlined"
-              sx={{ minWidth: 120, borderRadius: 1 }}
+              sx={{ width: { xs: '100%', sm: 120 }, borderRadius: 1 }}
               size="small"
             >
               <MenuItem value="name">Name</MenuItem>
@@ -324,7 +334,7 @@ const Timeline = () => {
               value={maxThumbnails}
               onChange={(e) => setMaxThumbnails(e.target.value)}
               variant="outlined"
-              sx={{ minWidth: 80, borderRadius: 1 }}
+              sx={{ width: { xs: '100%', sm: 80 }, borderRadius: 1 }}
               size="small"
             >
               <MenuItem value={1}>1</MenuItem>
@@ -340,7 +350,7 @@ const Timeline = () => {
         </Box>
 
         <Fade in={filteredTimelines.length > 0}>
-          <Grid container spacing={3}>
+          <Grid container spacing={isMobile ? 2 : 3}>
             {paginatedTimelines.map((timeline, index) => (
               <Grid item xs={12} sm={6} md={4} key={timeline._id}>
                 <Fade in timeout={300 + index * 100}>
@@ -348,7 +358,7 @@ const Timeline = () => {
                     {timeline.memories.length > 0 ? (
                       <Carousel
                         autoPlay={false}
-                        navButtonsAlwaysVisible
+                        navButtonsAlwaysVisible={!isMobile}
                         indicators
                         sx={{ height: { xs: 120, sm: 150, md: 180 } }}
                       >
@@ -357,7 +367,7 @@ const Timeline = () => {
                             key={memory._id}
                             component={memory.media.match(/\.(mp4|webm|ogg)$/) ? 'video' : 'img'}
                             src={memory.media}
-                            controls={memory.media.match(/\.(mp4|webm|ogg)$/)}
+                            controls={memory.media.match(/\.(mp4|webm|ogg)$/) && !isMobile}
                             sx={{ height: '100%', objectFit: 'cover' }}
                             alt={memory.title || 'Timeline memory preview'}
                             onError={(e) => (e.target.src = 'https://via.placeholder.com/150?text=No+Preview')}
@@ -377,8 +387,25 @@ const Timeline = () => {
                         <Typography color="textSecondary">No Preview Available</Typography>
                       </Box>
                     )}
-                    <CardContent>
-                      <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                    <CardContent sx={{ flexGrow: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Avatar
+                          sx={{ width: 24, height: 24, bgcolor: '#1976d2' }}
+                          alt={timeline.user?.username || 'Unknown'}
+                          src={timeline.user?.avatar}
+                        >
+                          {timeline.user?.username?.[0]?.toUpperCase() || 'U'}
+                        </Avatar>
+                        <Typography
+                          variant="body2"
+                          component={Link}
+                          to={`/profile/${timeline.user?._id}`}
+                          sx={{ color: '#1976d2', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                        >
+                          {timeline.user?.username || 'Unknown User'}
+                        </Typography>
+                      </Box>
+                      <Typography variant={isMobile ? 'body1' : 'h6'} sx={{ fontWeight: 'bold' }}>
                         {timeline.name || 'Untitled'}
                       </Typography>
                       <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
@@ -410,7 +437,7 @@ const Timeline = () => {
                             color="primary"
                             size="small"
                           >
-                            View Memories
+                            View
                           </Button>
                           <Button
                             variant="outlined"
@@ -418,7 +445,15 @@ const Timeline = () => {
                             size="small"
                             onClick={() => handleOpenShareDialog(timeline)}
                           >
-                            Share with Friends
+                            Share
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="secondary"
+                            size="small"
+                            onClick={() => handleCopyLink(timeline._id)}
+                          >
+                            Copy Link
                           </Button>
                         </Box>
                         <Tooltip title="Delete Timeline">
@@ -446,6 +481,7 @@ const Timeline = () => {
               page={page}
               onChange={(e, value) => setPage(value)}
               color="primary"
+              size={isMobile ? 'small' : 'medium'}
             />
           </Box>
         )}
@@ -469,6 +505,7 @@ const Timeline = () => {
             value={newTimelineName}
             onChange={(e) => setNewTimelineName(e.target.value)}
             variant="outlined"
+            size={isMobile ? 'small' : 'medium'}
           />
           <TextField
             margin="dense"
@@ -478,7 +515,8 @@ const Timeline = () => {
             onChange={(e) => setNewTimelineDescription(e.target.value)}
             variant="outlined"
             multiline
-            rows={2}
+            rows={isMobile ? 2 : 3}
+            size={isMobile ? 'small' : 'medium'}
           />
         </DialogContent>
         <DialogActions>
@@ -510,13 +548,13 @@ const Timeline = () => {
       </Dialog>
 
       {/* Share with Friends Dialog */}
-      <Dialog open={openShareDialog} onClose={handleCloseShareDialog} maxWidth="sm" fullWidth>
+      <Dialog open={openShareDialog} onClose={() => setOpenShareDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Share "{timelineToShare?.name || 'Untitled'}" with Friends</DialogTitle>
         <DialogContent>
           {friends.length === 0 ? (
             <Typography>No friends to share with. Add some friends first!</Typography>
           ) : (
-            <List>
+            <List dense>
               {friends.map((friend) => (
                 <ListItem key={friend._id} sx={{ py: 0 }}>
                   <Checkbox
@@ -530,7 +568,7 @@ const Timeline = () => {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseShareDialog} color="inherit">
+          <Button onClick={() => setOpenShareDialog(false)} color="inherit">
             Cancel
           </Button>
           <Button

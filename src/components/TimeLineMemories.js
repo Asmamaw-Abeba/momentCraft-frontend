@@ -239,7 +239,7 @@ const TimelineMemories = () => {
               <MuiIconButton
                 color="inherit"
                 component={Link}
-                to={`/add-memory/${timelineId}`}
+                to={`/memories`}
                 aria-label="Add new memory to timeline"
               >
                 <AddIcon />
