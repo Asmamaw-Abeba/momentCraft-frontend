@@ -1,5 +1,6 @@
-echo "*.js text eol=lf" > .gitattributes
-echo "*.jsx text eol=lf" >> .gitattributes
-echo "*.json text eol=lf" >> .gitattributes
-echo "*.css text eol=lf" >> .gitattributes
-echo ".gitignore text eol=lf" >> .gitattributes
+# Normalize text files to LF in the repository
+*.js text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+.gitignore text eol=lf
+.env text eol=lf
