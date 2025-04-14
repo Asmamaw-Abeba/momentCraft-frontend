@@ -199,7 +199,7 @@ const Timeline = () => {
   };
 
   const handleCopyLink = (timelineId) => {
-    const shareUrl = `${window.location.origin}/timeline/public/${timelineId}`;
+    const shareUrl = `${window.location.origin}/timelines/public/${timelineId}`;
     navigator.clipboard.writeText(shareUrl);
     toast.success('Timeline link copied to clipboard!');
   };
