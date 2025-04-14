@@ -115,7 +115,7 @@ const BestMemories = ({ refresh }) => {
   useEffect(() => {
     const getTimelines = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/timelines', {
+        const response = await axios.get('https://momentcraft-backend.onrender.com/api/timelines', {
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         });
         setTimelines(response.data || []);
@@ -189,7 +189,7 @@ const getThumbnailUrl = (videoUrl) => {
     }
     try {
       await axios.put(
-        `http://localhost:5000/api/timelines/${timelineId}/memories/${memoryId}`,
+        `https://momentcraft-backend.onrender.com/api/timelines/${timelineId}/memories/${memoryId}`,
         {},
         { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } }
       );
@@ -218,7 +218,7 @@ const getThumbnailUrl = (videoUrl) => {
       await Promise.all(
         selectedMemories.map((memoryId) =>
           axios.put(
-            `http://localhost:5000/api/timelines/${timelineId}/memories/${memoryId}`,
+            `https://momentcraft-backend.onrender.com/api/timelines/${timelineId}/memories/${memoryId}`,
             {},
             { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } }
           )
@@ -245,7 +245,7 @@ const getThumbnailUrl = (videoUrl) => {
       try {
         await Promise.all(
           selectedMemories.map((memoryId) =>
-            axios.delete(`http://localhost:5000/api/memories/${memoryId}`, {
+            axios.delete(`https://momentcraft-backend.onrender.com/api/memories/${memoryId}`, {
               headers: { Authorization: `Bearer ${token}` },
             })
           )

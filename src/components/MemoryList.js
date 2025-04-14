@@ -138,7 +138,7 @@ const MemoryList = ({ refresh }) => {
   useEffect(() => {
     const getTimelines = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/timelines', {
+        const response = await axios.get('https://momentcraft-backend.onrender.com/api/timelines', {
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         });
         setTimelines(response.data || []);
@@ -210,7 +210,7 @@ const MemoryList = ({ refresh }) => {
     }
     try {
       await axios.put(
-        `http://localhost:5000/api/timelines/${timelineId}/memories/${memoryId}`,
+        `https://momentcraft-backend.onrender.com/api/timelines/${timelineId}/memories/${memoryId}`,
         {},
         { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } }
       );
@@ -239,7 +239,7 @@ const MemoryList = ({ refresh }) => {
       await Promise.all(
         selectedMemories.map((memoryId) =>
           axios.put(
-            `http://localhost:5000/api/timelines/${timelineId}/memories/${memoryId}`,
+            `https://momentcraft-backend.onrender.com/api/timelines/${timelineId}/memories/${memoryId}`,
             {},
             { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } }
           )
@@ -266,7 +266,7 @@ const MemoryList = ({ refresh }) => {
       try {
         await Promise.all(
           selectedMemories.map((memoryId) =>
-            axios.delete(`http://localhost:5000/api/memories/${memoryId}`, {
+            axios.delete(`https://momentcraft-backend.onrender.com/api/memories/${memoryId}`, {
               headers: { Authorization: `Bearer ${token}` },
             })
           )
@@ -295,7 +295,7 @@ const MemoryList = ({ refresh }) => {
     if (window.confirm('Are you sure you want to delete this memory?')) {
       setLoadingDelete((prev) => ({ ...prev, [memoryId]: true }));
       try {
-        await axios.delete(`http://localhost:5000/api/memories/${memoryId}`, {
+        await axios.delete(`https://momentcraft-backend.onrender.com/api/memories/${memoryId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setMemories(memories.filter((m) => m._id !== memoryId));
@@ -330,7 +330,7 @@ const MemoryList = ({ refresh }) => {
 
     try {
       const response = await axios.put(
-        `http://localhost:5000/api/memories/${editMemory._id}`,
+        `https://momentcraft-backend.onrender.com/api/memories/${editMemory._id}`,
         formData,
         { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` } }
       );

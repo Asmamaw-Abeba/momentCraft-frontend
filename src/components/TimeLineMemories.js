@@ -73,7 +73,7 @@ const TimelineMemories = () => {
   const fetchTimeline = async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get(`http://localhost:5000/api/timelines/${timelineId}`, {
+      const { data } = await axios.get(`https://momentcraft-backend.onrender.com/api/timelines/${timelineId}`, {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
@@ -121,7 +121,7 @@ const TimelineMemories = () => {
 
     try {
       await axios.put(
-        `http://localhost:5000/api/timelines/${timelineId}/reorder`,
+        `https://momentcraft-backend.onrender.com/api/timelines/${timelineId}/reorder`,
         { memoryIds: reorderedMemories.map((m) => m._id) },
         {
           headers: {
@@ -142,7 +142,7 @@ const TimelineMemories = () => {
   const handleDeleteMemory = async (memoryId) => {
     if (window.confirm('Are you sure you want to remove this memory from the timeline?')) {
       try {
-        await axios.delete(`http://localhost:5000/api/timelines/${timelineId}/memories/${memoryId}`, {
+        await axios.delete(`https://momentcraft-backend.onrender.com/api/timelines/${timelineId}/memories/${memoryId}`, {
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,

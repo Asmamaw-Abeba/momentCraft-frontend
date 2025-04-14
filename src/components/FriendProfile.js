@@ -91,13 +91,13 @@ const FriendProfile = () => {
       if (!token) return;
       try {
         setLoading(true);
-        const friendResponse = await axios.get(`http://localhost:5000/api/auth/profile/${friendId}`, {
+        const friendResponse = await axios.get(`https://momentcraft-backend.onrender.com/api/auth/profile/${friendId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setFriend(friendResponse.data);
 
         const timelinesResponse = await axios.get(
-          `http://localhost:5000/api/auth/me/shared-timelines/${friendId}`,
+          `https://momentcraft-backend.onrender.com/api/auth/me/shared-timelines/${friendId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setSharedTimelines(timelinesResponse.data || []);
@@ -130,7 +130,7 @@ const FriendProfile = () => {
     setSendingMessage(true);
     try {
       await axios.post(
-        `http://localhost:5000/api/messages/send/${friendId}`,
+        `https://momentcraft-backend.onrender.com/api/messages/send/${friendId}`,
         { content: messageText },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -149,7 +149,7 @@ const FriendProfile = () => {
     if (!window.confirm(`Remove ${friend.username} as a friend?`)) return;
     setActionLoading(true);
     try {
-      await axios.delete(`http://localhost:5000/api/auth/${friendId}/friends`, {
+      await axios.delete(`https://momentcraft-backend.onrender.com/api/auth/${friendId}/friends`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       toast.success(`${friend.username} has been removed as a friend`);

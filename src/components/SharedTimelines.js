@@ -44,7 +44,7 @@ const SharedTimelines = () => {
   useEffect(() => {
     const fetchSharedTimelines = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/auth/me/shared-timelines', {
+        const response = await axios.get('https://momentcraft-backend.onrender.com/api/auth/me/shared-timelines', {
           headers: { Authorization: `Bearer ${token}` },
         });
         // Assuming response.data includes sharedBy user info; adjust if backend differs

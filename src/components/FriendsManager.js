@@ -87,19 +87,19 @@ const FriendsManager = () => {
     if (!token) return;
     try {
       setLoading(true);
-      const friendsResponse = await axios.get('http://localhost:5000/api/auth/me/friends', {
+      const friendsResponse = await axios.get('https://momentcraft-backend.onrender.com/api/auth/me/friends', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setFriends(friendsResponse.data.friends || []);
       setPendingRequests(friendsResponse.data.pendingRequests || []);
       setSentRequests(friendsResponse.data.sentRequests || []);
 
-      const usersResponse = await axios.get('http://localhost:5000/api/auth/all', {
+      const usersResponse = await axios.get('https://momentcraft-backend.onrender.com/api/auth/all', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setAllUsers(usersResponse.data || []);
 
-      const sharedResponse = await axios.get('http://localhost:5000/api/auth/me/shared-timelines', {
+      const sharedResponse = await axios.get('https://momentcraft-backend.onrender.com/api/auth/me/shared-timelines', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setNotifications(sharedResponse.data || []);
@@ -125,7 +125,7 @@ const FriendsManager = () => {
   const handleSendRequest = async (targetId) => {
     setActionLoading(targetId);
     try {
-      await axios.post(`http://localhost:5000/api/auth/${targetId}/request`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.post(`https://momentcraft-backend.onrender.com/api/auth/${targetId}/request`, {}, { headers: { Authorization: `Bearer ${token}` } });
       const targetUser = allUsers.find((u) => u._id === targetId);
       setSentRequests([...sentRequests, targetUser]);
       setAllUsers(allUsers.filter((u) => u._id !== targetId));
@@ -141,7 +141,7 @@ const FriendsManager = () => {
   const handleAcceptRequest = async (requesterId) => {
     setActionLoading(requesterId);
     try {
-      await axios.post(`http://localhost:5000/api/auth/${requesterId}/accept`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.post(`https://momentcraft-backend.onrender.com/api/auth/${requesterId}/accept`, {}, { headers: { Authorization: `Bearer ${token}` } });
       const accepted = pendingRequests.find((r) => r._id === requesterId);
       setPendingRequests(pendingRequests.filter((r) => r._id !== requesterId));
       setFriends([...friends, accepted]);
@@ -157,7 +157,7 @@ const FriendsManager = () => {
   const handleDeclineRequest = async (requesterId) => {
     setActionLoading(requesterId);
     try {
-      await axios.post(`http://localhost:5000/api/auth/${requesterId}/decline`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.post(`https://momentcraft-backend.onrender.com/api/auth/${requesterId}/decline`, {}, { headers: { Authorization: `Bearer ${token}` } });
       setPendingRequests(pendingRequests.filter((r) => r._id !== requesterId));
       toast.success('Friend request declined');
     } catch (error) {
@@ -172,7 +172,7 @@ const FriendsManager = () => {
     if (!window.confirm('Remove this friend?')) return;
     setActionLoading(friendId);
     try {
-      await axios.delete(`http://localhost:5000/api/auth/${friendId}/friends`, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.delete(`https://momentcraft-backend.onrender.com/api/auth/${friendId}/friends`, { headers: { Authorization: `Bearer ${token}` } });
       const removedFriend = friends.find((f) => f._id === friendId);
       setFriends(friends.filter((f) => f._id !== friendId));
       setAllUsers([...allUsers, removedFriend]);

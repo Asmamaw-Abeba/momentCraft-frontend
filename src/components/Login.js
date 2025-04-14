@@ -28,7 +28,7 @@ const Login = () => {
 
   const handleSubmit = async (values, { setSubmitting, setErrors }) => {
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
+      const response = await axios.post('https://momentcraft-backend.onrender.com/api/auth/login', {
         email: values.email,
         password: values.password,
       });

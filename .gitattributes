@@ -1,0 +1,5 @@
+echo "*.js text eol=lf" > .gitattributes
+echo "*.jsx text eol=lf" >> .gitattributes
+echo "*.json text eol=lf" >> .gitattributes
+echo "*.css text eol=lf" >> .gitattributes
+echo ".gitignore text eol=lf" >> .gitattributes

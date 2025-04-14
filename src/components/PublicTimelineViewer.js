@@ -66,7 +66,7 @@ const PublicTimelineViewer = () => {
   useEffect(() => {
     const fetchPublicTimeline = async () => {
       try {
-        const { data } = await axios.get(`http://localhost:5000/api/timelines/public/${id}`);
+        const { data } = await axios.get(`https://momentcraft-backend.onrender.com/api/timelines/public/${id}`);
         console.log('Fetched timeline data:', JSON.stringify(data, null, 2));
         const enhancedData = {
           ...data,
@@ -94,7 +94,7 @@ const PublicTimelineViewer = () => {
     setLoading(true);
     const fetchPublicTimeline = async () => {
       try {
-        const { data } = await axios.get(`http://localhost:5000/api/timelines/public/${id}`);
+        const { data } = await axios.get(`https://momentcraft-backend.onrender.com/api/timelines/public/${id}`);
         const enhancedData = {
           ...data,
           memories: data.memories.map((memory) => ({

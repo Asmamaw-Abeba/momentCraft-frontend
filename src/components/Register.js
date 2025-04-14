@@ -36,7 +36,7 @@ const Register = () => {
 
   const handleSubmit = async (values, { setSubmitting, setErrors }) => {
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/register', {
+      const response = await axios.post('https://momentcraft-backend.onrender.com/api/auth/register', {
         username: values.username,
         email: values.email,
         password: values.password,

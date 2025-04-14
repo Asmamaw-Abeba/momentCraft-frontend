@@ -90,7 +90,7 @@ const MemoryForm = () => {
     if (!selectedFile) return;
 
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/webm', 'video/ogg'];
-    const maxSize = 50 * 1024 * 1024; // 50MB
+    const maxSize = 200 * 1024 * 1024; // 50MB
 
     if (!allowedTypes.includes(selectedFile.type)) {
       setError('Only images (JPEG, PNG, GIF) and videos (MP4, WebM, Ogg) are allowed.');

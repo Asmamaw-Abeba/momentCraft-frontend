@@ -87,7 +87,7 @@ const Home = () => {
     const fetchPublicMemories = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('http://localhost:5000/api/memories/public');
+        const response = await axios.get('https://momentcraft-backend.onrender.com/api/memories/public');
         const fetchedMemories = response.data.slice(0, 6);
         setMemories(fetchedMemories.length > 0 ? fetchedMemories : [teaserMemory]);
       } catch (error) {

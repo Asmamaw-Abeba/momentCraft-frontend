@@ -1,7 +1,8 @@
 import axios from 'axios';
 
-const API = axios.create({ baseURL: 'http://localhost:5000/api/memories' });
-const TimeLine_API = axios.create({ baseURL: 'http://localhost:5000/api/timelines' });
+const REACT_APP_API_URL='https://momentcraft-backend.onrender.com';
+const API = axios.create({ baseURL: 'https://momentcraft-backend.onrender.com/api/memories' });
+const TimeLine_API = axios.create({ baseURL: 'https://momentcraft-backend.onrender.com/api/timelines' });
 export const fetchMemories = (token) => API.get('/', {
   headers: {
     'Content-Type': 'application/json', // Use 'application/json' for JSON data

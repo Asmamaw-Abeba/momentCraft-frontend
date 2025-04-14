@@ -79,7 +79,7 @@ const Timeline = () => {
   // Memoize fetch functions
   const fetchTimelines = useCallback(async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/timelines', {
+      const response = await axios.get('https://momentcraft-backend.onrender.com/api/timelines', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setTimelines(response.data);
@@ -95,7 +95,7 @@ const Timeline = () => {
 
   const fetchFriends = useCallback(async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/auth/me/friends', {
+      const response = await axios.get('https://momentcraft-backend.onrender.com/api/auth/me/friends', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setFriends(response.data.friends || []);
@@ -146,7 +146,7 @@ const Timeline = () => {
     }
     try {
       const response = await axios.post(
-        'http://localhost:5000/api/timelines',
+        'https://momentcraft-backend.onrender.com/api/timelines',
         { name: newTimelineName, description: newTimelineDescription },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -164,7 +164,7 @@ const Timeline = () => {
   const handleDeleteTimeline = async () => {
     if (!timelineToDelete) return;
     try {
-      await axios.delete(`http://localhost:5000/api/timelines/${timelineToDelete._id}`, {
+      await axios.delete(`https://momentcraft-backend.onrender.com/api/timelines/${timelineToDelete._id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setTimelines((prev) => prev.filter((t) => t._id !== timelineToDelete._id));
@@ -184,7 +184,7 @@ const Timeline = () => {
     }
     try {
       await axios.post(
-        'http://localhost:5000/api/auth/share-timeline',
+        'https://momentcraft-backend.onrender.com/api/auth/share-timeline',
         { timelineId: timelineToShare._id, friendIds: selectedFriends },
         { headers: { Authorization: `Bearer ${token}` } }
       );
