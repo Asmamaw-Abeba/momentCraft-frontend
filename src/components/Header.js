@@ -75,7 +75,7 @@ const Header = ({
     if (externalOnExplore) {
       externalOnExplore();
     } else {
-      navigate('/memories');
+      navigate('/best-memories');
     }
   };
 
