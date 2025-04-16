@@ -82,7 +82,7 @@ const FriendProfile = () => {
   const [actionLoading, setActionLoading] = useState(false);
 
   const handleSoundToggle = () => setSoundOn((prev) => !prev);
-  const handleExploreMemories = () => navigate('/memories');
+  const handleExploreMemories = () => navigate('/best-memories');
   const handleManageFriends = () => navigate('/friends');
   const handleJoinNow = () => navigate('/register');
 

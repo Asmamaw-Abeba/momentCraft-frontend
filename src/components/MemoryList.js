@@ -112,7 +112,7 @@ const MemoryList = ({ refresh }) => {
 
   // Navigation handlers
   const handleSoundToggle = () => setSoundOn((prev) => !prev);
-  const handleExploreMemories = () => navigate('/memories');
+  const handleExploreMemories = () => navigate('/best-memories');
   const handleManageFriends = () => navigate('/friends');
   const handleJoinNow = () => navigate('/register');
 

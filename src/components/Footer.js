@@ -8,6 +8,7 @@ import {
 } from '@mui/material';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import { styled } from '@mui/system';
 
 // Styled Components
@@ -35,7 +36,11 @@ const Footer = () => {
   };
 
   const handleCreateTimeline = () => {
-    navigate('/create-timeline'); // Assuming a route for creating timelines
+    navigate('/create-timeline');
+  };
+
+  const handleManageMemories = () => {
+    navigate('/memories');
   };
 
   return (
@@ -48,6 +53,7 @@ const Footer = () => {
             sx={{
               '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
             }}
+            aria-label="View timelines"
           >
             <TimelineIcon sx={{ color: 'white', fontSize: { xs: 28, sm: 32 } }} />
           </IconButton>
@@ -59,8 +65,21 @@ const Footer = () => {
             sx={{
               '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
             }}
+            aria-label="Create timeline"
           >
             <AddCircleOutlineIcon sx={{ color: 'white', fontSize: { xs: 28, sm: 32 } }} />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Manage Memories" arrow>
+          <IconButton
+            color="inherit"
+            onClick={handleManageMemories}
+            sx={{
+              '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
+            }}
+            aria-label="Manage memories"
+          >
+            <PhotoLibraryIcon sx={{ color: 'white', fontSize: { xs: 28, sm: 32 } }} />
           </IconButton>
         </Tooltip>
         <Typography
