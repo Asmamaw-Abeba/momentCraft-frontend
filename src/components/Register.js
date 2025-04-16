@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
@@ -42,7 +42,7 @@ const Register = () => {
         password: values.password,
       });
       login(response.data.token);
-      navigate('/');
+      navigate('/best-memories');
     } catch (err) {
       setErrors({ submit: 'Registration failed. Please try again.' });
       setSubmitting(false);
@@ -131,6 +131,22 @@ const Register = () => {
               </Form>
             )}
           </Formik>
+
+          <Typography align="center" variant="body2" sx={{ mt: 2 }}>
+            Already have an account?{' '}
+            <Link
+              to="/login"
+              style={{
+                color: '#1976d2',
+                textDecoration: 'none',
+                fontWeight: 'bold',
+              }}
+              onMouseOver={(e) => (e.target.style.textDecoration = 'underline')}
+              onMouseOut={(e) => (e.target.style.textDecoration = 'none')}
+            >
+              Log in
+            </Link>
+          </Typography>
         </Paper>
       </Box>
     </Container>
