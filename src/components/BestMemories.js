@@ -62,10 +62,11 @@ const previewModalStyle = {
   transform: 'translate(-50%, -50%)',
   bgcolor: 'background.paper',
   boxShadow: 24,
-  p: 2,
+  p: { xs: 2, sm: 3 },
   borderRadius: 8,
-  maxWidth: '90vw',
-  maxHeight: '90vh',
+  width: { xs: '95vw', sm: '80vw', md: '60vw' },
+  maxWidth: '1000px',
+  maxHeight: { xs: '95vh', sm: '90vh' },
   overflow: 'auto',
 };
 
@@ -87,7 +88,7 @@ const BestMemories = ({ refresh }) => {
   const [loading, setLoading] = useState(true);
   const [playingVideo, setPlayingVideo] = useState(null);
   const [soundOn, setSoundOn] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false); // State for collapsible filters
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const memoriesPerPage = 6;
 
   // Navigation handlers
@@ -605,7 +606,14 @@ const BestMemories = ({ refresh }) => {
                 <video
                   controls
                   autoPlay
-                  style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }}
+                  style={{
+                    width: '100%',
+                    maxWidth: { xs: '90vw', sm: '80vw' },
+                    maxHeight: { xs: '80vh', sm: '70vh' },
+                    objectFit: 'contain',
+                    display: 'block',
+                    margin: 'auto',
+                  }}
                 >
                   <source src={previewMemory.media} type="video/mp4" />
                   Your browser does not support the video tag.
@@ -614,7 +622,14 @@ const BestMemories = ({ refresh }) => {
                 <img
                   src={previewMemory.media || 'https://via.placeholder.com/300'}
                   alt={previewMemory.title}
-                  style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }}
+                  style={{
+                    width: '100%',
+                    maxWidth: { xs: '90vw', sm: '80vw' },
+                    maxHeight: { xs: '80vh', sm: '70vh' },
+                    objectFit: 'contain',
+                    display: 'block',
+                    margin: 'auto',
+                  }}
                   onError={(e) => (e.target.src = 'https://via.placeholder.com/300')}
                 />
               )
