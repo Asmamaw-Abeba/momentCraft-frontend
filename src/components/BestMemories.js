@@ -24,6 +24,7 @@ import {
   Avatar,
   useMediaQuery,
   useTheme,
+  Collapse,
 } from '@mui/material';
 import { styled } from '@mui/system';
 import axios from 'axios';
@@ -35,6 +36,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import ShareIcon from '@mui/icons-material/Share';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer, toast } from 'react-toastify';
 import Header from './Header';
@@ -49,7 +51,7 @@ const StyledCard = styled(Card)(({ theme }) => ({
   borderRadius: 12,
   overflow: 'hidden',
   display: 'flex',
-  flexDirection: 'column', // Ensure content stacks properly
+  flexDirection: 'column',
 }));
 
 // Modal styles
@@ -71,7 +73,7 @@ const BestMemories = ({ refresh }) => {
   const { token } = useContext(AuthContext);
   const navigate = useNavigate();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // Detect mobile screens
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [memories, setMemories] = useState([]);
   const [filteredMemories, setFilteredMemories] = useState([]);
   const [timelines, setTimelines] = useState([]);
@@ -85,6 +87,7 @@ const BestMemories = ({ refresh }) => {
   const [loading, setLoading] = useState(true);
   const [playingVideo, setPlayingVideo] = useState(null);
   const [soundOn, setSoundOn] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false); // State for collapsible filters
   const memoriesPerPage = 6;
 
   // Navigation handlers
@@ -135,7 +138,7 @@ const BestMemories = ({ refresh }) => {
         (memory) =>
           (memory.title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
           (memory.description?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-          (memory.user?.username?.toLowerCase() || '').includes(searchQuery.toLowerCase()) // Search by username
+          (memory.user?.username?.toLowerCase() || '').includes(searchQuery.toLowerCase())
       );
     }
     if (filterTimeline) {
@@ -161,24 +164,23 @@ const BestMemories = ({ refresh }) => {
     return videoExtensions.some((ext) => filename.toLowerCase().endsWith(ext));
   };
 
- // Extract public_id from video URL
- const getPublicId = (videoUrl) => {
-  const urlWithoutQuery = videoUrl.split('?')[0];
-  const uploadIndex = urlWithoutQuery.indexOf('/upload/');
-  if (uploadIndex === -1) return null;
-  const afterUpload = urlWithoutQuery.substring(uploadIndex + 8);
-  const lastDotIndex = afterUpload.lastIndexOf('.');
-  if (lastDotIndex === -1) return afterUpload;
-  return afterUpload.substring(0, lastDotIndex);
-};
+  // Extract public_id from video URL
+  const getPublicId = (videoUrl) => {
+    const urlWithoutQuery = videoUrl.split('?')[0];
+    const uploadIndex = urlWithoutQuery.indexOf('/upload/');
+    if (uploadIndex === -1) return null;
+    const afterUpload = urlWithoutQuery.substring(uploadIndex + 8);
+    const lastDotIndex = afterUpload.lastIndexOf('.');
+    if (lastDotIndex === -1) return afterUpload;
+    return afterUpload.substring(0, lastDotIndex);
+  };
 
-// Generate thumbnail URL from video URL
-const getThumbnailUrl = (videoUrl) => {
-  const publicId = getPublicId(videoUrl);
-  if (!publicId) return null;
-  return `https://res.cloudinary.com/${process.env.REACT_APP_CLOUDINARY_CLOUD_NAME}/video/upload/w_300,h_300,c_fill,so_1,f_jpg/${publicId}.jpg`;
-};
-
+  // Generate thumbnail URL from video URL
+  const getThumbnailUrl = (videoUrl) => {
+    const publicId = getPublicId(videoUrl);
+    if (!publicId) return null;
+    return `https://res.cloudinary.com/${process.env.REACT_APP_CLOUDINARY_CLOUD_NAME}/video/upload/w_300,h_300,c_fill,so_1,f_jpg/${publicId}.jpg`;
+  };
 
   // Handle adding a memory to a timeline
   const handleAddToTimeline = async (memoryId) => {
@@ -285,6 +287,11 @@ const getThumbnailUrl = (videoUrl) => {
     );
   };
 
+  // Toggle filters visibility
+  const toggleFilters = () => {
+    setFiltersOpen((prev) => !prev);
+  };
+
   // Pagination logic
   const totalPages = Math.ceil(filteredMemories.length / memoriesPerPage);
   const paginatedMemories = filteredMemories.slice(
@@ -330,60 +337,98 @@ const getThumbnailUrl = (videoUrl) => {
       />
       <Box sx={{ padding: { xs: 2, sm: 3 }, mt: { xs: 6, sm: 8 } }}>
         {/* Search, Sort, and Filter Controls */}
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, mb: 3, gap: 2 }}>
-          <Typography variant={isMobile ? 'h6' : 'h5'} sx={{ fontWeight: 'bold' }}>
-            Your Memories
-          </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: { xs: 'center', sm: 'flex-end' } }}>
-            <TextField
-              label="Search Memories"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              variant="outlined"
-              size="small"
-              sx={{ width: { xs: '100%', sm: 200 }, borderRadius: 1 }}
-              InputProps={{ endAdornment: <InputAdornment position="end"><SearchIcon /></InputAdornment> }}
-              aria-label="Search memories"
-            />
-            <Select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              variant="outlined"
-              size="small"
-              sx={{ width: { xs: '100%', sm: 120 }, borderRadius: 1 }}
-            >
-              <MenuItem value="default">Default</MenuItem>
-              <MenuItem value="title">Title</MenuItem>
-              <MenuItem value="date">Date</MenuItem>
-              <MenuItem value="media">Media Type</MenuItem>
-            </Select>
-            <Select
-              value={filterTimeline}
-              onChange={(e) => setFilterTimeline(e.target.value)}
-              variant="outlined"
-              size="small"
-              sx={{ width: { xs: '100%', sm: 120 }, borderRadius: 1 }}
-            >
-              <MenuItem value="">All Timelines</MenuItem>
-              {timelines.map((timeline) => (
-                <MenuItem key={timeline._id} value={timeline._id}>{timeline.name}</MenuItem>
-              ))}
-            </Select>
-            {selectedMemories.length > 0 && (
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Tooltip title="Add Selected Memories">
-                  <IconButton color="primary" onClick={handleBulkAddToTimeline}>
-                    <AddIcon />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Delete Selected Memories">
-                  <IconButton color="error" onClick={handleBulkDelete}>
-                    <DeleteIcon />
-                  </IconButton>
-                </Tooltip>
-              </Box>
+        <Box sx={{ mb: 3 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mb: isMobile ? 1 : 0,
+            }}
+          >
+            <Typography variant={isMobile ? 'h6' : 'h5'} sx={{ fontWeight: 'bold' }}>
+              Your Memories
+            </Typography>
+            {isMobile && (
+              <IconButton
+                onClick={toggleFilters}
+                aria-label={filtersOpen ? 'Hide filters' : 'Show filters'}
+                sx={{ color: '#1976d2' }}
+              >
+                <FilterListIcon />
+              </IconButton>
             )}
           </Box>
+          <Collapse in={!isMobile || filtersOpen}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                gap: 1,
+                justifyContent: 'flex-end',
+                alignItems: { xs: 'stretch', sm: 'center' },
+              }}
+            >
+              <TextField
+                label="Search Memories"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                variant="outlined"
+                size="small"
+                sx={{ width: { xs: '100%', sm: 200 }, borderRadius: 1 }}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+                aria-label="Search memories"
+              />
+              <Select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                variant="outlined"
+                size="small"
+                sx={{ width: { xs: '100%', sm: 120 }, borderRadius: 1 }}
+                displayEmpty
+              >
+                <MenuItem value="default">Sort: Default</MenuItem>
+                <MenuItem value="title">Sort: Title</MenuItem>
+                <MenuItem value="date">Sort: Date</MenuItem>
+                <MenuItem value="media">Sort: Media Type</MenuItem>
+              </Select>
+              <Select
+                value={filterTimeline}
+                onChange={(e) => setFilterTimeline(e.target.value)}
+                variant="outlined"
+                size="small"
+                sx={{ width: { xs: '100%', sm: 120 }, borderRadius: 1 }}
+                displayEmpty
+              >
+                <MenuItem value="">All Timelines</MenuItem>
+                {timelines.map((timeline) => (
+                  <MenuItem key={timeline._id} value={timeline._id}>
+                    {timeline.name}
+                  </MenuItem>
+                ))}
+              </Select>
+              {selectedMemories.length > 0 && (
+                <Box sx={{ display: 'flex', gap: 1, justifyContent: { xs: 'center', sm: 'flex-end' } }}>
+                  <Tooltip title="Add Selected Memories">
+                    <IconButton color="primary" onClick={handleBulkAddToTimeline}>
+                      <AddIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete Selected Memories">
+                    <IconButton color="error" onClick={handleBulkDelete}>
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              )}
+            </Box>
+          </Collapse>
         </Box>
 
         <Fade in={!loading}>
@@ -410,7 +455,7 @@ const getThumbnailUrl = (videoUrl) => {
                 <Grid item key={memory._id} xs={12} sm={6} md={4}>
                   <StyledCard>
                     <Box sx={{ position: 'relative', flexShrink: 0 }}>
-                    {memory.media && (
+                      {memory.media && (
                         isVideo(memory.media) ? (
                           playingVideo === memory._id ? (
                             <Box sx={{ position: 'relative', paddingTop: '56.25%' }}>
