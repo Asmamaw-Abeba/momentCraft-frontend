@@ -15,10 +15,11 @@ import {
   Tooltip,
   useMediaQuery,
   useTheme,
+  Collapse,
 } from '@mui/material';
 import { styled } from '@mui/system';
 import Confetti from 'react-confetti';
-import { Share as ShareIcon } from '@mui/icons-material';
+import { Share as ShareIcon, KeyboardArrowDown as KeyboardArrowDownIcon, KeyboardArrowUp as KeyboardArrowUpIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import Header from './Header';
 
@@ -103,6 +104,7 @@ const PublicTimelineViewer = () => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [selectedMemory, setSelectedMemory] = useState(null);
   const [currentMemoryIndex, setCurrentMemoryIndex] = useState(0);
+  const [descriptionOpen, setDescriptionOpen] = useState(false); // State for collapsible description
   const scrollContainerRef = useRef(null);
   const clicksToUnlock = 5;
 
@@ -207,6 +209,10 @@ const PublicTimelineViewer = () => {
     }
   };
 
+  const toggleDescription = () => {
+    setDescriptionOpen((prev) => !prev);
+  };
+
   if (loading) {
     return (
       <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5', display: 'flex', flexDirection: 'column' }}>
@@ -263,49 +269,66 @@ const PublicTimelineViewer = () => {
           <Box
             sx={{
               textAlign: 'center',
-              px: { xs: 2, sm: 3 },
-              mb: 2,
+              px: { xs: 1, sm: 2 },
+              mb: 1,
               position: 'relative',
             }}
           >
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 'bold',
-                fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' },
-                color: '#1976d2',
-              }}
-            >
-              {timeline.name || 'Untitled Timeline'}
-            </Typography>
-            <Typography
-              variant="body1"
-              color="textSecondary"
-              sx={{ mt: 1, fontSize: { xs: '0.9rem', sm: '1rem' } }}
-            >
-              {timeline.description || 'No description available'}
-            </Typography>
-            <Typography
-              variant="caption"
-              color="textSecondary"
-              sx={{ mt: 1, display: 'block', fontStyle: 'italic' }}
-            >
-              Created by: {timeline.user?.username || 'Unknown'}
-            </Typography>
-            <Typography
-              variant="caption"
-              color="textSecondary"
-              sx={{ mt: 1, display: 'block' }}
-            >
-              Tap memories {clicksToUnlock} times to unlock hidden surprises!
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+              <Typography
+                variant="h4"
+                sx={{
+                  fontWeight: 'bold',
+                  fontSize: { xs: '1.25rem', sm: '1.75rem', md: '2rem' },
+                  color: '#1976d2',
+                }}
+              >
+                {timeline.name || 'Untitled Timeline'}
+              </Typography>
+              <IconButton
+                onClick={toggleDescription}
+                sx={{ color: '#1976d2' }}
+                aria-label={descriptionOpen ? 'Hide timeline details' : 'Show timeline details'}
+              >
+                {descriptionOpen ? (
+                  <KeyboardArrowUpIcon fontSize={isMobile ? 'small' : 'medium'} />
+                ) : (
+                  <KeyboardArrowDownIcon fontSize={isMobile ? 'small' : 'medium'} />
+                )}
+              </IconButton>
+            </Box>
+            <Collapse in={descriptionOpen}>
+              <Box sx={{ mt: 1 }}>
+                <Typography
+                  variant="body1"
+                  color="textSecondary"
+                  sx={{ fontSize: { xs: '0.8rem', sm: '0.9rem' } }}
+                >
+                  {timeline.description || 'No description available'}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  color="textSecondary"
+                  sx={{ mt: 0.5, display: 'block', fontStyle: 'italic' }}
+                >
+                  Created by: {timeline.user?.username || 'Unknown'}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  color="textSecondary"
+                  sx={{ mt: 0.5, display: 'block' }}
+                >
+                  Tap memories {clicksToUnlock} times to unlock hidden surprises!
+                </Typography>
+              </Box>
+            </Collapse>
             <Tooltip title="Share this timeline">
               <IconButton
                 onClick={handleShare}
                 sx={{
                   position: 'absolute',
                   top: { xs: -4, sm: 0 },
-                  right: { xs: 8, sm: 16 },
+                  right: { xs: 4, sm: 8 },
                   color: '#1976d2',
                 }}
                 aria-label="Share timeline link"
