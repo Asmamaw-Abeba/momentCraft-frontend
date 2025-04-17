@@ -1,4 +1,5 @@
 import React from 'react';
+import axios from 'axios';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
@@ -16,11 +17,36 @@ root.render(
   </React.StrictMode>
 );
 
-if ('serviceWorker' in navigator) {
+if ('serviceWorker' in navigator && 'PushManager' in window) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then(
-      (registration) => {
-        console.log('Service Worker registered:', registration);
+      async (registration) => {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Service Worker registered:', registration);
+        }
+        // Request notification permission
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          // Get push subscription
+          const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: process.env.REACT_APP_VAPID_PUBLIC_KEY, // Add to .env
+          });
+          // Send subscription to backend
+          try {
+            const userId = localStorage.getItem('userId'); // From your auth (March 11, 2025)
+            console.log(userId);
+            if (userId) {
+              await axios.post('https://momentcraft-backend.onrender.com/api/push/subscribe', {
+                userId,
+                subscription,
+              });
+              toast.success('Subscribed to notifications!');
+            }
+          } catch (error) {
+            toast.error('Failed to subscribe to notifications');
+          }
+        }
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
           newWorker.addEventListener('statechange', () => {
