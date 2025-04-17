@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -17,13 +17,13 @@ import {
   useTheme,
 } from '@mui/material';
 import { styled } from '@mui/system';
-import Carousel from 'react-material-ui-carousel';
 import Confetti from 'react-confetti';
 import { Share as ShareIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
-import Header from './Header'; // Self-contained Header
+import Header from './Header';
 
-const StyledCarouselItem = styled(Box)(({ theme }) => ({
+// Styled Components
+const StyledMemoryItem = styled(Box)(({ theme }) => ({
   cursor: 'pointer',
   transition: 'transform 0.2s, box-shadow 0.2s',
   '&:hover': {
@@ -33,6 +33,46 @@ const StyledCarouselItem = styled(Box)(({ theme }) => ({
   borderRadius: 8,
   overflow: 'hidden',
   backgroundColor: '#fff',
+  margin: '0 auto',
+  padding: theme.spacing(2),
+  scrollSnapAlign: 'start',
+  width: '100%',
+  minHeight: '100vh',
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'center',
+}));
+
+const ScrollContainer = styled(Box)(({ theme }) => ({
+  height: '100vh',
+  overflowY: 'auto',
+  scrollSnapType: 'y mandatory',
+  scrollbarWidth: 'none',
+  '&::-webkit-scrollbar': {
+    display: 'none',
+  },
+  position: 'relative',
+  backgroundColor: '#f5f5f5',
+}));
+
+const ProgressDots = styled(Box)(({ theme }) => ({
+  position: 'fixed',
+  right: theme.spacing(1),
+  top: '50%',
+  transform: 'translateY(-50%)',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: theme.spacing(1),
+  zIndex: 20,
+}));
+
+const ProgressDot = styled(Box)(({ theme, active }) => ({
+  width: 8,
+  height: 8,
+  borderRadius: '50%',
+  backgroundColor: active ? '#1976d2' : 'rgba(255, 255, 255, 0.5)',
+  transition: 'background-color 0.3s',
+  boxShadow: active ? '0 0 8px rgba(0, 0, 0, 0.3)' : 'none',
 }));
 
 const modalStyle = {
@@ -42,10 +82,11 @@ const modalStyle = {
   transform: 'translate(-50%, -50%)',
   bgcolor: 'background.paper',
   boxShadow: 24,
-  p: { xs: 2, sm: 4 },
+  p: { xs: 2, sm: 3 },
   borderRadius: 8,
-  maxWidth: '90vw',
-  maxHeight: '90vh',
+  width: { xs: '95vw', sm: '80vw' },
+  maxWidth: '1000px',
+  maxHeight: { xs: '95vh', sm: '90vh' },
   overflow: 'auto',
 };
 
@@ -61,13 +102,14 @@ const PublicTimelineViewer = () => {
   const [unlocked, setUnlocked] = useState({});
   const [showConfetti, setShowConfetti] = useState(false);
   const [selectedMemory, setSelectedMemory] = useState(null);
+  const [currentMemoryIndex, setCurrentMemoryIndex] = useState(0);
+  const scrollContainerRef = useRef(null);
   const clicksToUnlock = 5;
 
   useEffect(() => {
     const fetchPublicTimeline = async () => {
       try {
         const { data } = await axios.get(`https://momentcraft-backend.onrender.com/api/timelines/public/${id}`);
-        console.log('Fetched timeline data:', JSON.stringify(data, null, 2));
         const enhancedData = {
           ...data,
           memories: data.memories.map((memory) => ({
@@ -88,6 +130,23 @@ const PublicTimelineViewer = () => {
     };
     fetchPublicTimeline();
   }, [id]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (scrollContainerRef.current) {
+        const scrollTop = scrollContainerRef.current.scrollTop;
+        const windowHeight = window.innerHeight;
+        const index = Math.round(scrollTop / windowHeight);
+        setCurrentMemoryIndex(index);
+      }
+    };
+
+    const container = scrollContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+      return () => container.removeEventListener('scroll', handleScroll);
+    }
+  }, [timeline]);
 
   const handleRetry = () => {
     setError(null);
@@ -139,6 +198,15 @@ const PublicTimelineViewer = () => {
     toast.success('Timeline link copied to clipboard!');
   };
 
+  const handleDotClick = (index) => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: index * window.innerHeight,
+        behavior: 'smooth',
+      });
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5', display: 'flex', flexDirection: 'column' }}>
@@ -183,12 +251,23 @@ const PublicTimelineViewer = () => {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5', display: 'flex', flexDirection: 'column' }}>
-      {showConfetti && <Confetti width={window.innerWidth} height={window.innerHeight} />}
+      {showConfetti && (
+        <Fade in={showConfetti}>
+          <Confetti width={window.innerWidth} height={window.innerHeight} />
+        </Fade>
+      )}
       <Header />
-      <Box sx={{ flexGrow: 1, padding: { xs: 2, sm: 3, md: 4 }, mt: { xs: 6, sm: 8 } }}>
+      <Box sx={{ flexGrow: 1, mt: { xs: 6, sm: 8 } }}>
         {/* Header Section */}
         <Fade in>
-          <Box sx={{ textAlign: 'center', mb: 4, position: 'relative' }}>
+          <Box
+            sx={{
+              textAlign: 'center',
+              px: { xs: 2, sm: 3 },
+              mb: 2,
+              position: 'relative',
+            }}
+          >
             <Typography
               variant="h4"
               sx={{
@@ -218,39 +297,30 @@ const PublicTimelineViewer = () => {
               color="textSecondary"
               sx={{ mt: 1, display: 'block' }}
             >
-              Click memories {clicksToUnlock} times to unlock hidden surprises!
+              Tap memories {clicksToUnlock} times to unlock hidden surprises!
             </Typography>
             <Tooltip title="Share this timeline">
               <IconButton
                 onClick={handleShare}
-                sx={{ position: 'absolute', top: 0, right: 0, color: '#1976d2' }}
+                sx={{
+                  position: 'absolute',
+                  top: { xs: -4, sm: 0 },
+                  right: { xs: 8, sm: 16 },
+                  color: '#1976d2',
+                }}
                 aria-label="Share timeline link"
               >
-                <ShareIcon />
+                <ShareIcon fontSize={isMobile ? 'small' : 'medium'} />
               </IconButton>
             </Tooltip>
           </Box>
         </Fade>
 
-        {/* Carousel Section */}
+        {/* Scrollable Memories Section */}
         {timeline.memories && timeline.memories.length > 0 ? (
-          <Carousel
-            sx={{ mt: 3 }}
-            navButtonsAlwaysVisible={!isMobile}
-            indicators
-            animation="slide"
-            duration={500}
-          >
-            {timeline.memories.map((memory) => (
-              <StyledCarouselItem
-                key={memory._id}
-                sx={{
-                  textAlign: 'center',
-                  px: { xs: 1, sm: 2 },
-                  maxWidth: '100%',
-                  py: 2,
-                }}
-              >
+          <ScrollContainer ref={scrollContainerRef} role="region" aria-label="Memory scroll">
+            {timeline.memories.map((memory, index) => (
+              <StyledMemoryItem key={memory._id}>
                 {memory.media ? (
                   <>
                     <CardMedia
@@ -259,10 +329,11 @@ const PublicTimelineViewer = () => {
                       controls={memory.media.match(/\.(mp4|webm|ogg)$/) && !isMobile}
                       sx={{
                         width: '100%',
-                        maxHeight: { xs: '40vh', sm: '50vh', md: '60vh' },
+                        maxHeight: { xs: '90vh', sm: '80vh', md: '70vh' },
                         objectFit: 'contain',
                         borderRadius: 2,
                         boxShadow: 3,
+                        margin: '0 auto',
                       }}
                       onClick={() => handleMediaClick(memory._id)}
                       onError={(e) => {
@@ -270,19 +341,33 @@ const PublicTimelineViewer = () => {
                         e.target.src = 'https://via.placeholder.com/400x300?text=Media+Not+Found';
                       }}
                       loading="lazy"
-                      aria-label={`Memory: ${memory.title || 'Untitled'} - Click to explore`}
+                      aria-label={`Memory: ${memory.title || 'Untitled'} - Tap to explore`}
                     />
                     {!unlocked[memory._id] && (
                       <LinearProgress
                         variant="determinate"
                         value={((clicks[memory._id] || 0) / clicksToUnlock) * 100}
-                        sx={{ mt: 1, maxWidth: '50%', mx: 'auto', height: 6, borderRadius: 3 }}
+                        sx={{
+                          mt: 1,
+                          maxWidth: '50%',
+                          mx: 'auto',
+                          height: 6,
+                          borderRadius: 3,
+                          backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                          '& .MuiLinearProgress-bar': {
+                            backgroundColor: '#1976d2',
+                            transition: 'width 0.3s ease-in-out',
+                          },
+                        }}
                         aria-label={`Progress to unlock hidden content: ${clicks[memory._id] || 0}/${clicksToUnlock}`}
                       />
                     )}
                   </>
                 ) : (
-                  <Typography variant="body1" sx={{ py: 5 }}>
+                  <Typography
+                    variant="body1"
+                    sx={{ py: 5, textAlign: 'center', color: 'text.secondary' }}
+                  >
                     No media available for this memory
                   </Typography>
                 )}
@@ -292,6 +377,7 @@ const PublicTimelineViewer = () => {
                     mt: 2,
                     fontSize: { xs: '1rem', sm: '1.25rem' },
                     fontWeight: 'medium',
+                    textAlign: 'center',
                   }}
                 >
                   {memory.title || 'Untitled Memory'}
@@ -299,23 +385,52 @@ const PublicTimelineViewer = () => {
                 <Typography
                   variant="body2"
                   color="textSecondary"
-                  sx={{ mt: 1, fontSize: { xs: '0.8rem', sm: '0.9rem' } }}
+                  sx={{
+                    mt: 1,
+                    fontSize: { xs: '0.8rem', sm: '0.9rem' },
+                    textAlign: 'center',
+                  }}
                 >
                   {memory.description || 'No description'}
                 </Typography>
                 {unlocked[memory._id] && (
                   <Typography
                     variant="body2"
-                    sx={{ mt: 1, color: '#388e3c', fontStyle: 'italic' }}
+                    sx={{
+                      mt: 1,
+                      color: '#388e3c',
+                      fontStyle: 'italic',
+                      textAlign: 'center',
+                    }}
                   >
-                    Unlocked! Click again to view the secret.
+                    Unlocked! Tap again to view the secret.
                   </Typography>
                 )}
-              </StyledCarouselItem>
+              </StyledMemoryItem>
             ))}
-          </Carousel>
+            <ProgressDots>
+              {timeline.memories.map((_, index) => (
+                <ProgressDot
+                  key={index}
+                  active={index === currentMemoryIndex}
+                  onClick={() => handleDotClick(index)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Go to memory ${index + 1}`}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      handleDotClick(index);
+                    }
+                  }}
+                />
+              ))}
+            </ProgressDots>
+          </ScrollContainer>
         ) : (
-          <Typography variant="h6" sx={{ textAlign: 'center', mt: 5 }}>
+          <Typography
+            variant="h6"
+            sx={{ textAlign: 'center', mt: 5, color: 'text.secondary' }}
+          >
             No memories found in this timeline.
           </Typography>
         )}
@@ -326,13 +441,21 @@ const PublicTimelineViewer = () => {
           onClose={() => setSelectedMemory(null)}
           closeAfterTransition
           BackdropComponent={Backdrop}
-          BackdropProps={{ timeout: 500 }}
+          BackdropProps={{ timeout: 500, sx: { backgroundColor: 'rgba(0, 0, 0, 0.7)' } }}
         >
           <Fade in={!!selectedMemory}>
             <Box sx={modalStyle}>
               {selectedMemory && unlocked[selectedMemory._id] && (
                 <>
-                  <Typography variant="h6" sx={{ mb: 2, color: '#1976d2', fontWeight: 'bold' }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      mb: 2,
+                      color: '#1976d2',
+                      fontWeight: 'bold',
+                      fontSize: { xs: '1.25rem', sm: '1.5rem' },
+                    }}
+                  >
                     Easter Egg Unlocked!
                   </Typography>
                   {selectedMemory.hiddenContent?.media && (
@@ -342,15 +465,23 @@ const PublicTimelineViewer = () => {
                       controls={selectedMemory.hiddenContent.media.match(/\.(mp4|webm|ogg)$/) && !isMobile}
                       sx={{
                         width: '100%',
-                        maxHeight: { xs: '40vh', sm: '50vh' },
+                        maxHeight: { xs: '90vh', sm: '80vh' },
                         objectFit: 'contain',
                         borderRadius: 2,
                         boxShadow: 2,
+                        margin: '0 auto',
                       }}
                       aria-label={`Hidden content for ${selectedMemory.title || 'Untitled'}`}
                     />
                   )}
-                  <Typography variant="body1" sx={{ mt: 2, color: '#388e3c' }}>
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      mt: 2,
+                      color: '#388e3c',
+                      fontSize: { xs: '0.9rem', sm: '1rem' },
+                    }}
+                  >
                     {selectedMemory.hiddenContent?.text || 'Congratulations on finding this secret!'}
                   </Typography>
                   <Button
