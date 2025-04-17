@@ -92,13 +92,22 @@ self.addEventListener('fetch', (event) => {
 });
 
 self.addEventListener('push', (event) => {
-  const data = event.data.json();
+  let data;
+  try {
+    data = event.data.json();
+  } catch (error) {
+    console.error('Invalid push payload:', error);
+    data = {
+      title: 'MomentCraft Update',
+      body: 'New content is available!',
+    };
+  }
   const options = {
     body: data.body,
     icon: '/icon-192x192.png',
     badge: '/icon-192x192.png',
     data: {
-      url: '/', // Redirect to app on click
+      url: '/',
     },
   };
   event.waitUntil(self.registration.showNotification(data.title, options));
