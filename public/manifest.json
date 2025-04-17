@@ -1,6 +1,7 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "name": "MomentCraft",
+  "short_name": "M-Craft",
+  "description": "Capture and share your cherished memories",
   "icons": [
     {
       "src": "favicon.ico",
