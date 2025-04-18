@@ -17,11 +17,23 @@ import {
   useTheme,
   Collapse,
 } from '@mui/material';
-import { styled } from '@mui/system';
+import { styled, keyframes } from '@mui/system';
 import Confetti from 'react-confetti';
-import { Share as ShareIcon, KeyboardArrowDown as KeyboardArrowDownIcon, KeyboardArrowUp as KeyboardArrowUpIcon } from '@mui/icons-material';
+import {
+  Share as ShareIcon,
+  KeyboardArrowDown as KeyboardArrowDownIcon,
+  KeyboardArrowUp as KeyboardArrowUpIcon,
+  PanTool as PanToolIcon,
+} from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import Header from './Header';
+
+// Scroll animation for hand icon
+const scrollAnimation = keyframes`
+  0% { transform: translateY(0); }
+  50% { transform: translateY(20px); }
+  100% { transform: translateY(0); }
+`;
 
 // Styled Components
 const StyledMemoryItem = styled(Box)(({ theme }) => ({
@@ -67,13 +79,29 @@ const ProgressDots = styled(Box)(({ theme }) => ({
   zIndex: 20,
 }));
 
-const ProgressDot = styled(Box)(({ theme, active }) => ({
+const ProgressDot = styled(Box)(({ theme, isActive }) => ({
   width: 8,
   height: 8,
   borderRadius: '50%',
-  backgroundColor: active ? '#1976d2' : 'rgba(255, 255, 255, 0.5)',
+  backgroundColor: isActive ? '#1976d2' : 'rgba(255, 255, 255, 0.5)',
   transition: 'background-color 0.3s',
-  boxShadow: active ? '0 0 8px rgba(0, 0, 0, 0.3)' : 'none',
+  boxShadow: isActive ? '0 0 8px rgba(0, 0, 0, 0.3)' : 'none',
+}));
+
+const ScrollPrompt = styled(Box)(({ theme }) => ({
+  position: 'fixed',
+  bottom: theme.spacing(4),
+  left: '50%',
+  transform: 'translateX(-50%)',
+  zIndex: 30,
+  backgroundColor: 'rgba(25, 118, 210, 0.9)',
+  borderRadius: '50%',
+  padding: theme.spacing(1),
+  boxShadow: theme.shadows[4],
+  animation: `${scrollAnimation} 1.5s ease-in-out infinite`,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
 }));
 
 const modalStyle = {
@@ -104,9 +132,45 @@ const PublicTimelineViewer = () => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [selectedMemory, setSelectedMemory] = useState(null);
   const [currentMemoryIndex, setCurrentMemoryIndex] = useState(0);
-  const [descriptionOpen, setDescriptionOpen] = useState(false); // State for collapsible description
+  const [descriptionOpen, setDescriptionOpen] = useState(false);
+  const [showScrollPrompt, setShowScrollPrompt] = useState(false);
   const scrollContainerRef = useRef(null);
+  const idleTimeoutRef = useRef(null);
   const clicksToUnlock = 5;
+
+  // Handle scroll prompt logic
+  useEffect(() => {
+    const hasShownPrompt = sessionStorage.getItem('scrollPromptShown');
+    if (hasShownPrompt || timeline?.memories?.length <= 1) {
+      return;
+    }
+
+    if (currentMemoryIndex === 0) {
+      idleTimeoutRef.current = setTimeout(() => {
+        setShowScrollPrompt(true);
+        setTimeout(() => {
+          setShowScrollPrompt(false);
+          sessionStorage.setItem('scrollPromptShown', 'true');
+        }, 3000);
+      }, 5000);
+    }
+
+    return () => {
+      if (idleTimeoutRef.current) {
+        clearTimeout(idleTimeoutRef.current);
+      }
+    };
+  }, [currentMemoryIndex, timeline]);
+
+  useEffect(() => {
+    if (currentMemoryIndex !== 0 && showScrollPrompt) {
+      setShowScrollPrompt(false);
+      sessionStorage.setItem('scrollPromptShown', 'true');
+      if (idleTimeoutRef.current) {
+        clearTimeout(idleTimeoutRef.current);
+      }
+    }
+  }, [currentMemoryIndex, showScrollPrompt]);
 
   useEffect(() => {
     const fetchPublicTimeline = async () => {
@@ -118,7 +182,7 @@ const PublicTimelineViewer = () => {
             ...memory,
             hiddenContent: memory.hiddenContent || {
               text: `Secret unlocked for ${memory.title || 'this memory'}!`,
-              media: 'https://via.placeholder.com/300?text=Easter+Egg',
+              media: '/fallback-image.jpg', // Use local fallback for hidden content
             },
           })),
         };
@@ -139,7 +203,18 @@ const PublicTimelineViewer = () => {
         const scrollTop = scrollContainerRef.current.scrollTop;
         const windowHeight = window.innerHeight;
         const index = Math.round(scrollTop / windowHeight);
-        setCurrentMemoryIndex(index);
+        if (index !== currentMemoryIndex) {
+          setCurrentMemoryIndex(index);
+          // Optional: Trigger notification on scroll (uncomment if needed)
+          /*
+          if (window.subscribeToNotifications) {
+            axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/push/notify/${localStorage.getItem('userId')}`, {
+              title: 'New Memory!',
+              body: `Check out memory ${index + 1} in the timeline!`,
+            });
+          }
+          */
+        }
       }
     };
 
@@ -148,7 +223,7 @@ const PublicTimelineViewer = () => {
       container.addEventListener('scroll', handleScroll);
       return () => container.removeEventListener('scroll', handleScroll);
     }
-  }, [timeline]);
+  }, [timeline, currentMemoryIndex]);
 
   const handleRetry = () => {
     setError(null);
@@ -162,7 +237,7 @@ const PublicTimelineViewer = () => {
             ...memory,
             hiddenContent: memory.hiddenContent || {
               text: `Secret unlocked for ${memory.title || 'this memory'}!`,
-              media: 'https://via.placeholder.com/300?text=Easter+Egg',
+              media: '/fallback-image.jpg',
             },
           })),
         };
@@ -264,7 +339,6 @@ const PublicTimelineViewer = () => {
       )}
       <Header />
       <Box sx={{ flexGrow: 1, mt: { xs: 6, sm: 8 } }}>
-        {/* Header Section */}
         <Fade in>
           <Box
             sx={{
@@ -339,7 +413,6 @@ const PublicTimelineViewer = () => {
           </Box>
         </Fade>
 
-        {/* Scrollable Memories Section */}
         {timeline.memories && timeline.memories.length > 0 ? (
           <ScrollContainer ref={scrollContainerRef} role="region" aria-label="Memory scroll">
             {timeline.memories.map((memory, index) => (
@@ -360,9 +433,10 @@ const PublicTimelineViewer = () => {
                       }}
                       onClick={() => handleMediaClick(memory._id)}
                       onError={(e) => {
-                        console.error(`Failed to load media: ${memory.media}`);
-                        e.target.src = 'https://via.placeholder.com/400x300?text=Media+Not+Found';
+                        console.error(`Failed to load media: ${memory.media}`, e);
+                        e.target.src = '/fallback-image.jpg';
                       }}
+                      onLoad={() => console.log(`Successfully loaded media: ${memory.media}`)}
                       loading="lazy"
                       aria-label={`Memory: ${memory.title || 'Untitled'} - Tap to explore`}
                     />
@@ -435,7 +509,7 @@ const PublicTimelineViewer = () => {
               {timeline.memories.map((_, index) => (
                 <ProgressDot
                   key={index}
-                  active={index === currentMemoryIndex}
+                  isActive={index === currentMemoryIndex}
                   onClick={() => handleDotClick(index)}
                   role="button"
                   tabIndex={0}
@@ -448,6 +522,21 @@ const PublicTimelineViewer = () => {
                 />
               ))}
             </ProgressDots>
+            {showScrollPrompt && (
+              <Fade in={showScrollPrompt}>
+                <ScrollPrompt>
+                  <Tooltip title="Scroll down for more memories">
+                    <PanToolIcon
+                      sx={{
+                        color: '#fff',
+                        fontSize: { xs: '1.5rem', sm: '2rem' },
+                      }}
+                      aria-label="Scroll down prompt"
+                    />
+                  </Tooltip>
+                </ScrollPrompt>
+              </Fade>
+            )}
           </ScrollContainer>
         ) : (
           <Typography
@@ -458,7 +547,6 @@ const PublicTimelineViewer = () => {
           </Typography>
         )}
 
-        {/* Hidden Content Modal */}
         <Modal
           open={!!selectedMemory}
           onClose={() => setSelectedMemory(null)}
@@ -494,6 +582,11 @@ const PublicTimelineViewer = () => {
                         boxShadow: 2,
                         margin: '0 auto',
                       }}
+                      onError={(e) => {
+                        console.error(`Failed to load hidden media: ${selectedMemory.hiddenContent.media}`, e);
+                        e.target.src = '/fallback-image.jpg';
+                      }}
+                      onLoad={() => console.log(`Successfully loaded hidden media: ${selectedMemory.hiddenContent.media}`)}
                       aria-label={`Hidden content for ${selectedMemory.title || 'Untitled'}`}
                     />
                   )}

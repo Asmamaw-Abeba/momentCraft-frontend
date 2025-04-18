@@ -60,6 +60,7 @@ self.addEventListener('install', (event) => {
         '/icon-512x512.png',
         '/manifest.json',
         '/offline.html',
+        '/fallback-image.jpg', // Added fallback image
       ]);
     })
   );
@@ -83,7 +84,14 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request).then((response) => {
       return response || fetch(event.request).catch(() => {
         if (event.request.destination === 'image') {
-          return caches.match('/fallback-image.jpg');
+          return caches.match('/fallback-image.jpg').then((fallback) => {
+            if (fallback) return fallback;
+            // Fallback to a default Response if image isn't cached
+            return new Response(
+              new Blob([new Uint8Array([])], { type: 'image/jpeg' }),
+              { status: 404, statusText: 'Image Not Found' }
+            );
+          });
         }
         return caches.match('/offline.html');
       });
